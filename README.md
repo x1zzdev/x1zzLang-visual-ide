@@ -8,8 +8,7 @@ A graphical IDE for visually designing data pipelines and generating/executing x
 
 ## Screenshot
 
-<!-- Add your screenshot here -->
-<!-- ![x1zzLang Visual IDE](./docs/screenshot.png) -->
+![x1zzLang Visual IDE](./docs/screenshot.png)
 
 ---
 

@@ -8,8 +8,9 @@
 
 ## 스크린샷
 
-<!-- 스크린샷을 여기에 추가하세요 -->
-<!-- ![x1zzLang Visual IDE](./docs/screenshot.png) -->
+
+![x1zzLang Visual IDE](./docs/screenshot.png)
+
 
 ---
 
