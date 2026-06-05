@@ -1,176 +1,120 @@
 import React, { memo } from 'react';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import * as Icons from 'lucide-react';
 
+/**
+ * CustomNode
+ * 
+ * SUPPORTED_OPS 전용으로 단순화된 노드 렌더러.
+ *
+ * - fileInput: 입력 핸들 없음 (소스), 출력 핸들 있음
+ * - 그 외 모든 지원 노드: 입력 핸들 + 출력 핸들
+ * - status: idle | running | success | error
+ */
 const CustomNode = ({ id, data, selected, type }) => {
   const IconComponent = data.icon ? (Icons[data.icon] || Icons.Square) : Icons.Square;
   const category = data?.category || 'inout';
-  const status = data?.status || 'idle'; // idle, success, error, running
-  
-  const reactFlow = useReactFlow();
+  const status   = data?.status   || 'idle';
 
-  // Determine display description dynamically based on common parameter fields (supports custom tools out-of-the-box!)
+  // ── 노드 서브 라벨 ────────────────────────────────────────────────────────
   let description = '';
   if (data?.parameters?.filePath) {
     description = data.parameters.filePath;
-  } else if (data?.parameters?.outputPath) {
-    description = data.parameters.outputPath;
-  } else if (data?.parameters?.tableName) {
-    description = `Table: ${data.parameters.tableName}`;
-  } else if (data?.parameters?.connectionString) {
-    description = data.parameters.connectionString;
-  } else if (data?.parameters?.pattern) {
-    description = `/${data.parameters.pattern}/`;
-  } else if (data?.parameters?.imagePath) {
-    description = data.parameters.imagePath;
   } else if (data?.parameters?.column) {
-    const op = data.parameters.operator || '';
-    const val = data.parameters.value || '';
-    const dir = data.parameters.descending !== undefined ? (data.parameters.descending ? 'DESC' : 'ASC') : '';
-    description = `${data.parameters.column}${op ? ' ' + op : ''}${val ? ' ' + val : ''}${dir ? ' ' + dir : ''}`;
+    const op  = data.parameters.operator   || '';
+    const val = data.parameters.value      ?? '';
+    const dir = data.parameters.descending !== undefined
+      ? (data.parameters.descending ? '↓ DESC' : '↑ ASC') : '';
+    const agg = data.parameters.agg        || '';
+    description = [
+      data.parameters.column,
+      op,
+      val !== '' ? String(val) : '',
+      dir,
+      agg ? `(${agg})` : ''
+    ].filter(Boolean).join(' ');
   } else if (data?.parameters?.columns && Array.isArray(data.parameters.columns)) {
-    const activeCols = data.parameters.columns.filter(c => c && c.keep).length;
-    description = `${activeCols} cols`;
-  } else if (type === 'browse') {
-    description = 'View Data';
-  } else if (data?.description) {
-    description = data.description;
+    const kept = data.parameters.columns.filter(c => c && c.keep !== false).length;
+    description = `${kept} col${kept !== 1 ? 's' : ''}`;
+  } else if (data?.parameters?.n !== undefined) {
+    description = `n = ${data.parameters.n}`;
+  } else if (data?.parameters?.value !== undefined && data.parameters.value !== '') {
+    description = `→ ${data.parameters.value}`;
   }
 
-  // If node has executed successfully, replace the sub-label with the output row counts!
-  if (status === 'success' && data?.resultSummary) {
-    if (type === 'filter' && data.resultSummary.ports) {
-      const trueCount = data.resultSummary.ports['true']?.row_count || 0;
-      const falseCount = data.resultSummary.ports['false']?.row_count || 0;
-      description = `T: ${trueCount} | F: ${falseCount} rows`;
-    } else if (type === 'join') {
-      const edges = reactFlow.getEdges();
-      const nodes = reactFlow.getNodes();
-      const leftEdge = edges.find(e => e.target === id && e.targetHandle === 'left');
-      const rightEdge = edges.find(e => e.target === id && e.targetHandle === 'right');
-      const leftNode = leftEdge ? nodes.find(n => n.id === leftEdge.source) : null;
-      const rightNode = rightEdge ? nodes.find(n => n.id === rightEdge.source) : null;
-      
-      const leftCount = leftNode?.data?.resultSummary?.row_count ?? '?';
-      const rightCount = rightNode?.data?.resultSummary?.row_count ?? '?';
-      const outCount = data.resultSummary.row_count ?? 0;
-      
-      description = `L:${leftCount} R:${rightCount} ➔ ${outCount}`;
-    } else if (type === 'union') {
-      const edges = reactFlow.getEdges();
-      const nodes = reactFlow.getNodes();
-      const incomingEdges = edges.filter(e => e.target === id);
-      const incomingCounts = incomingEdges.map(e => {
-        const sourceNode = nodes.find(n => n.id === e.source);
-        const count = sourceNode?.data?.resultSummary?.row_count ?? '?';
-        return `[${e.source}]: ${count}`;
-      });
-      const inStr = incomingCounts.length > 0 ? incomingCounts.join('\n') : '0';
-      const outCount = data.resultSummary.row_count ?? 0;
-      description = `In:\n${inStr}\n➔ Out: ${outCount}`;
-    } else if (data.resultSummary.row_count !== undefined) {
-      if (description && type !== 'select' && type !== 'formula' && type !== 'cleanse') {
-        description = `${description}\n➔ Out: ${data.resultSummary.row_count} rows`;
-      } else {
-        description = `${data.resultSummary.row_count} rows`;
-      }
-    }
+  // 실행 성공 시 행 수 표시
+  if (status === 'success' && data?.resultSummary?.row_count !== undefined) {
+    const rows = data.resultSummary.row_count;
+    description = description
+      ? `${description}\n➔ ${rows} rows`
+      : `${rows} rows`;
   }
-
-  const isCached = data?.parameters?.isCached || false;
 
   const handleAnchorClick = (e, handleType, handleId) => {
     e.stopPropagation();
-    window.dispatchEvent(new CustomEvent('vibe-handle-click', { 
-      detail: { nodeId: id, handleType, handleId } 
+    window.dispatchEvent(new CustomEvent('vibe-handle-click', {
+      detail: { nodeId: id, handleType, handleId }
     }));
   };
 
   const buildTooltip = () => {
-    let t = `${data?.label || type} Tool`;
-    if (data?.description) t += `\n${data.description}`;
-    t += `\nStatus: ${status}`;
+    let t = `${data?.label || type}`;
+    if (status !== 'idle') t += ` [${status}]`;
     if (data?.parameters && Object.keys(data.parameters).length > 0) {
-      t += `\nConfig: ${Object.keys(data.parameters).join(', ')}`;
+      const keys = Object.keys(data.parameters).filter(k => k !== 'detectedSchema');
+      if (keys.length > 0) t += `\n${keys.map(k => `${k}: ${data.parameters[k]}`).join(', ')}`;
     }
-    if (status === 'skipped') t += `\n(Bypassed: Data is cached downstream)`;
     return t;
   };
 
+  // fileInput은 소스 노드 — 입력 핸들 없음
+  const hasInputHandle  = type !== 'fileInput';
+  // 모든 지원 노드는 출력 핸들 있음
+  const hasOutputHandle = true;
+
   return (
-    <div 
-      className={`custom-node ${category} ${selected ? 'selected' : ''} ${isCached ? 'is-cached' : ''}`} 
-      style={status === 'skipped' ? { opacity: 0.55 } : {}}
+    <div
+      className={`custom-node ${category} ${selected ? 'selected' : ''}`}
       title={buildTooltip()}
     >
-      {/* Target port (Left) for all nodes except FileInput, DatabaseInput, and ImageCaption */}
-      {type === 'join' ? (
-        <>
-          <div className="join-port-label left-label">L</div>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="left"
-            style={{ top: '30%' }}
-            className="node-handle left-handle join-left-handle"
-            onClick={(e) => handleAnchorClick(e, 'target', 'left')}
-          />
-          <div className="join-port-label right-label">R</div>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id="right"
-            style={{ top: '70%' }}
-            className="node-handle left-handle join-right-handle"
-            onClick={(e) => handleAnchorClick(e, 'target', 'right')}
-          />
-        </>
-      ) : (!['file_input', 'fileInput', 'database_input', 'databaseInput', 'image_caption', 'imageCaption', 'gcs_in', 'gcsIn', 'google_sheets_in', 'googleSheetsIn'].includes(type)) ? (
+      {/* 입력 핸들 (좌측) */}
+      {hasInputHandle && (
         <Handle
           type="target"
           position={Position.Left}
           id="input"
           className="node-handle left-handle"
-          onClick={(e) => handleAnchorClick(e, 'target', 'input')}
+          onClick={e => handleAnchorClick(e, 'target', 'input')}
         />
-      ) : null}
+      )}
 
-      {/* Node ID label floating above the square box */}
-      <div style={{ position: 'absolute', top: '-14px', width: '100px', textAlign: 'center', opacity: 0.4, fontSize: '0.55em', fontWeight: 'normal', color: 'var(--text-muted)', pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)' }}>
+      {/* 노드 ID 라벨 (상단 floating) */}
+      <div style={{
+        position: 'absolute', top: '-14px', width: '100px', textAlign: 'center',
+        opacity: 0.4, fontSize: '0.55em', fontWeight: 'normal', color: 'var(--text-muted)',
+        pointerEvents: 'none', left: '50%', transform: 'translateX(-50%)'
+      }}>
         [{id}]
       </div>
 
-      {/* Node Square Box (The tool icon) */}
+      {/* 노드 아이콘 박스 */}
       <div className={`node-icon-box ${category} ${status} ${selected ? 'selected' : ''}`}>
         <IconComponent size={12} className="node-icon" />
-        
-        {/* Status indicator on the top corner */}
-        {status !== 'idle' && status !== 'waiting' && status !== 'running' && status !== 'skipped' && (
+
+        {/* 상태 표시 점 (success / error) */}
+        {(status === 'success' || status === 'error') && (
           <div className={`node-status-dot ${status}`} title={`Status: ${status}`} />
         )}
+
+        {/* 실행 중 스피너 */}
         {status === 'running' && (
           <div className="node-status-running" title="Processing...">
             <Icons.Loader2 size={12} className="animate-spin" style={{ color: '#3b82f6' }} />
           </div>
         )}
-        {status === 'skipped' && (
-          <div className="node-status-skipped" title="Bypassed: Data is cached downstream" style={{
-            position: 'absolute', top: -6, right: -6, background: '#f1f5f9', border: '1px solid #cbd5e1', 
-            borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
-          }}>
-            <Icons.FastForward size={10} style={{ color: '#64748b' }} />
-          </div>
-        )}
-        
-        {/* Cached indicator on the top left corner */}
-        {isCached && (
-          <div className="node-cached-icon" title="Node Output is Cached">
-            <span style={{ fontSize: '10px', fontWeight: 'bold' }}>©</span>
-          </div>
-        )}
       </div>
 
-      {/* Node Labels floating underneath the square box */}
+      {/* 노드 라벨 */}
       <div className="node-labels-container">
         <div className="node-label-main" style={{ textAlign: 'center' }}>
           {data?.label || 'Node'}
@@ -182,37 +126,16 @@ const CustomNode = ({ id, data, selected, type }) => {
         )}
       </div>
 
-      {/* Source port (Right) for all nodes except terminal nodes */}
-      {type === 'filter' ? (
-        <>
-          <div className="filter-port-label true-label">T</div>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="true"
-            style={{ top: '30%' }}
-            className="node-handle right-handle true-handle"
-            onClick={(e) => handleAnchorClick(e, 'source', 'true')}
-          />
-          <div className="filter-port-label false-label">F</div>
-          <Handle
-            type="source"
-            position={Position.Right}
-            id="false"
-            style={{ top: '70%' }}
-            className="node-handle right-handle false-handle"
-            onClick={(e) => handleAnchorClick(e, 'source', 'false')}
-          />
-        </>
-      ) : (!['browse', 'file_output', 'fileOutput', 'database_output', 'databaseOutput', 'gcs_out', 'gcsOut', 'google_sheets_out', 'googleSheetsOut'].includes(type)) ? (
+      {/* 출력 핸들 (우측) */}
+      {hasOutputHandle && (
         <Handle
           type="source"
           position={Position.Right}
           id="output"
           className="node-handle right-handle"
-          onClick={(e) => handleAnchorClick(e, 'source', 'output')}
+          onClick={e => handleAnchorClick(e, 'source', 'output')}
         />
-      ) : null}
+      )}
     </div>
   );
 };

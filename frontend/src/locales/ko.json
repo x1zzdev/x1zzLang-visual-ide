@@ -1,0 +1,156 @@
+{
+  "app": {
+    "title": "x1zzETL"
+  },
+  "toolbar": {
+    "addTool": "도구 추가...",
+    "searchTools": "도구 검색...",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "loadWorkflow": "워크플로 불러오기",
+    "saveWorkflow": "워크플로 저장",
+    "exportXzz": ".xzz 내보내기",
+    "exportXzzTitle": "파이프라인을 x1zzLang .xzz 파일로 내보내기",
+    "autoRun": "자동 실행",
+    "autoRunTitle": "노드 변경 시 파이프라인 자동 실행",
+    "run": "실행",
+    "running": "실행 중...",
+    "enterFullscreen": "전체 화면",
+    "exitFullscreen": "전체 화면 종료",
+    "addToolTitle": "캔버스에 추가할 도구를 선택하세요",
+    "resetFavorites": "즐겨찾기 초기화"
+  },
+  "categories": {
+    "favorites": "⭐ 즐겨찾기",
+    "inout": "입출력",
+    "prep": "전처리",
+    "transform": "변환"
+  },
+  "config": {
+    "title": "설정",
+    "selectNode": "캔버스에서 노드를 선택하여 설정하세요.",
+    "nodesSelected": "{{count}}개 노드가 선택되었습니다.",
+    "nodeTypes": {
+      "fileInput": "파일 입력",
+      "filter": "필터",
+      "select": "열 선택",
+      "groupBy": "그룹화",
+      "count": "행 수 계산",
+      "sort": "정렬 (orderBy)",
+      "take": "상위 N행",
+      "dropNull": "결측값 행 제거",
+      "fillNull": "결측값 채우기",
+      "comment": "주석",
+      "container": "컨테이너"
+    },
+    "fileInput": {
+      "filePath": "파일 경로",
+      "filePathPlaceholder": "예: data.csv",
+      "localFile": "로컬 파일 불러오기",
+      "localFileBtn": "파일 선택...",
+      "localFileHint": "CSV 파일을 선택하면 스키마(컬럼)가 자동으로 감지됩니다",
+      "schema": "스키마 (type ::)",
+      "addColumn": "컬럼 추가",
+      "noColumns": "정의된 컬럼이 없습니다. 컬럼을 추가하여 스키마를 정의하세요.",
+      "columnNamePlaceholder": "컬럼 이름"
+    },
+    "filter": {
+      "column": "컬럼",
+      "operator": "연산자",
+      "value": "값",
+      "valueHint": "숫자, true, false 또는 텍스트 문자열",
+      "valuePlaceholder": "예:  30  또는  \"Engineering\""
+    },
+    "select": {
+      "columnsToKeep": "유지할 컬럼",
+      "all": "전체",
+      "none": "전체 해제",
+      "noColumns": "상위에 파일 입력 노드를 연결하면 컬럼이 자동으로 표시됩니다."
+    },
+    "groupBy": {
+      "column": "그룹화 컬럼",
+      "agg": "집계 함수"
+    },
+    "count": {
+      "description": "파이프라인의 총 행 수를 계산합니다. 파라미터가 필요하지 않습니다."
+    },
+    "sort": {
+      "column": "정렬 컬럼",
+      "order": "정렬 순서",
+      "asc": "오름차순 (asc)",
+      "desc": "내림차순 (desc)"
+    },
+    "take": {
+      "n": "행 수 (N)",
+      "nHint": "파이프라인에서 상위 N개 행을 가져옵니다"
+    },
+    "dropNull": {
+      "description": "결측값(null)이 있는 행을 제거합니다. 컬럼을 지정하면 해당 컬럼만 확인하고, 비워두면 모든 컬럼을 확인합니다.",
+      "addColumnFilter": "+ 컬럼 추가..."
+    },
+    "fillNull": {
+      "column": "컬럼 (선택 사항)",
+      "columnHint": "비워두면 모든 결측값 컬럼을 채웁니다",
+      "clearColumn": "지우기 (모든 컬럼에 적용)",
+      "value": "채울 값",
+      "valueHint": "숫자, true, false 또는 텍스트 문자열을 사용하세요",
+      "valuePlaceholder": "예:  0  또는  \"N/A\""
+    },
+    "comment": {
+      "description": "캔버스에서 주석 노드를 더블클릭하여 텍스트를 편집하세요."
+    },
+    "container": {
+      "description": "그룹화 컨테이너입니다. 파이프라인을 정리하려면 노드를 안으로 드래그하세요."
+    },
+    "unsupportedNode": "노드 타입 {{type}}은(는) 지원되지 않는 작업입니다."
+  },
+  "tabs": {
+    "renamePrompt": "탭 이름 변경:"
+  },
+  "results": {
+    "title": "결과",
+    "tabs": {
+      "dataPreview": "데이터 미리보기",
+      "logs": "로그",
+      "x1zzCode": "x1zz 코드",
+      "x1zzCodeTitle": "생성된 x1zzLang 코드 보기"
+    },
+    "summary": {
+      "executionResult": "실행 결과: <strong>{{rowCount}}</strong>행, <strong>{{colCount}}</strong>열",
+      "notExecuted": "노드 '{{label}}' — 아직 실행되지 않았습니다",
+      "noNodeSelected": "선택된 노드 없음"
+    },
+    "data": {
+      "runToPeek": "파이프라인을 실행하면 데이터 결과가 여기에 표시됩니다.",
+      "zeroRows": "실행 결과 0개의 행이 반환되었습니다.",
+      "rowsSelected": "{{count}}행 선택됨",
+      "wrapText": "텍스트 줄바꿈",
+      "copySelected": "선택한 행 복사",
+      "copyAll": "전체 복사",
+      "copied": "복사됨"
+    },
+    "logs": {
+      "empty": "콘솔이 비어 있습니다. 파이프라인을 실행하면 로그가 표시됩니다.",
+      "executionLogs": "실행 로그",
+      "copyLogs": "로그 복사",
+      "copied": "복사됨"
+    },
+    "code": {
+      "title": "x1zzLang 생성 코드",
+      "copyCode": "코드 복사",
+      "copied": "복사됨",
+      "noNodes": "캔버스에 노드를 추가하면 x1zzLang 코드가 생성됩니다."
+    }
+  },
+  "tools": {
+    "fileInput": { "name": "파일 입력",   "description": "CSV/Excel 파일에서 데이터를 불러옵니다" },
+    "filter":    { "name": "필터",        "description": "조건으로 행을 필터링합니다" },
+    "select":    { "name": "열 선택",     "description": "컬럼을 선택합니다" },
+    "groupBy":   { "name": "그룹화",      "description": "컬럼으로 그룹화하고 집계합니다 (count/sum/mean/min/max)" },
+    "count":     { "name": "행 수 계산",  "description": "행 수를 계산합니다" },
+    "sort":      { "name": "정렬",        "description": "컬럼으로 행을 정렬합니다 (orderBy)" },
+    "take":      { "name": "상위 N행",    "description": "상위 N개 행을 가져옵니다" },
+    "dropNull":  { "name": "결측값 제거", "description": "결측값이 있는 행을 제거합니다" },
+    "fillNull":  { "name": "결측값 채우기", "description": "결측값을 리터럴로 채웁니다" }
+  }
+}

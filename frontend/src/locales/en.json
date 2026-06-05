@@ -1,0 +1,156 @@
+{
+  "app": {
+    "title": "x1zzETL"
+  },
+  "toolbar": {
+    "addTool": "Add Tool...",
+    "searchTools": "Search tools...",
+    "undo": "Undo",
+    "redo": "Redo",
+    "loadWorkflow": "Load Workflow",
+    "saveWorkflow": "Save Workflow",
+    "exportXzz": "Export .xzz",
+    "exportXzzTitle": "Export pipeline as x1zzLang .xzz file",
+    "autoRun": "Auto-Run",
+    "autoRunTitle": "Auto-run pipeline on node changes",
+    "run": "Run",
+    "running": "Running...",
+    "enterFullscreen": "Enter Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
+    "addToolTitle": "Select a tool to add it to the canvas",
+    "resetFavorites": "Reset Favorites"
+  },
+  "categories": {
+    "favorites": "⭐ Favorites",
+    "inout": "In / Out",
+    "prep": "Preparation",
+    "transform": "Transform"
+  },
+  "config": {
+    "title": "Configuration",
+    "selectNode": "Select a node on the canvas to configure it.",
+    "nodesSelected": "{{count}} nodes selected.",
+    "nodeTypes": {
+      "fileInput": "File Input",
+      "filter": "Filter",
+      "select": "Select",
+      "groupBy": "Group By",
+      "count": "Count",
+      "sort": "Sort (orderBy)",
+      "take": "Take",
+      "dropNull": "Drop Null",
+      "fillNull": "Fill Null",
+      "comment": "Comment",
+      "container": "Container"
+    },
+    "fileInput": {
+      "filePath": "File Path",
+      "filePathPlaceholder": "e.g. data.csv",
+      "localFile": "Load Local File",
+      "localFileBtn": "Browse...",
+      "localFileHint": "Select a CSV file to auto-detect columns",
+      "schema": "Schema (type ::)",
+      "addColumn": "Add Column",
+      "noColumns": "No columns defined. Add columns to define the schema.",
+      "columnNamePlaceholder": "column name"
+    },
+    "filter": {
+      "column": "Column",
+      "operator": "Operator",
+      "value": "Value",
+      "valueHint": "Numbers, true, false, or text string",
+      "valuePlaceholder": "e.g.  30  or  \"Engineering\""
+    },
+    "select": {
+      "columnsToKeep": "Columns to Keep",
+      "all": "All",
+      "none": "None",
+      "noColumns": "Connect a File Input upstream and columns will appear automatically."
+    },
+    "groupBy": {
+      "column": "Group By Column",
+      "agg": "Aggregation Function"
+    },
+    "count": {
+      "description": "Counts the total number of rows in the pipeline. No parameters required."
+    },
+    "sort": {
+      "column": "Sort Column",
+      "order": "Order",
+      "asc": "Ascending (asc)",
+      "desc": "Descending (desc)"
+    },
+    "take": {
+      "n": "Number of Rows (N)",
+      "nHint": "Takes the first N rows from the pipeline"
+    },
+    "dropNull": {
+      "description": "Drop rows where any value is null. Optionally specify columns — if empty, checks all columns.",
+      "addColumnFilter": "+ add column filter..."
+    },
+    "fillNull": {
+      "column": "Column (optional)",
+      "columnHint": "Leave empty to fill all null columns",
+      "clearColumn": "Clear (apply to all columns)",
+      "value": "Fill Value",
+      "valueHint": "Use a number, true, false, or a text string",
+      "valuePlaceholder": "e.g.  0  or  \"N/A\""
+    },
+    "comment": {
+      "description": "Double-click the comment node on the canvas to edit its text."
+    },
+    "container": {
+      "description": "This is a grouping container. Drag nodes inside it to organize your pipeline."
+    },
+    "unsupportedNode": "Node type {{type}} is not a supported operation."
+  },
+  "tabs": {
+    "renamePrompt": "Rename Tab:"
+  },
+  "results": {
+    "title": "Results",
+    "tabs": {
+      "dataPreview": "Data Preview",
+      "logs": "Logs",
+      "x1zzCode": "x1zz Code",
+      "x1zzCodeTitle": "View generated x1zzLang code"
+    },
+    "summary": {
+      "executionResult": "Execution result: <strong>{{rowCount}}</strong> row{{rowPlural}}, <strong>{{colCount}}</strong> column{{colPlural}}",
+      "notExecuted": "Node '{{label}}' — not yet executed",
+      "noNodeSelected": "No node selected"
+    },
+    "data": {
+      "runToPeek": "Run the pipeline to see data results here.",
+      "zeroRows": "Execution returned 0 rows.",
+      "rowsSelected": "{{count}} row{{plural}} selected",
+      "wrapText": "Wrap Text",
+      "copySelected": "Copy Selected",
+      "copyAll": "Copy All",
+      "copied": "Copied"
+    },
+    "logs": {
+      "empty": "Console is empty. Run the pipeline to see logs.",
+      "executionLogs": "EXECUTION LOGS",
+      "copyLogs": "Copy Logs",
+      "copied": "Copied"
+    },
+    "code": {
+      "title": "x1zzLang Generated Code",
+      "copyCode": "Copy Code",
+      "copied": "Copied",
+      "noNodes": "Add nodes to the canvas to generate x1zzLang code."
+    }
+  },
+  "tools": {
+    "fileInput": { "name": "File Input", "description": "Load data from a CSV/Excel file" },
+    "filter":    { "name": "Filter",     "description": "Filter rows by condition" },
+    "select":    { "name": "Select",     "description": "Select columns" },
+    "groupBy":   { "name": "Group By",   "description": "Group by column and aggregate (count/sum/mean/min/max)" },
+    "count":     { "name": "Count",      "description": "Count rows" },
+    "sort":      { "name": "Sort",       "description": "Sort rows by column (orderBy)" },
+    "take":      { "name": "Take",       "description": "Take first N rows" },
+    "dropNull":  { "name": "Drop Null",  "description": "Drop rows with null values" },
+    "fillNull":  { "name": "Fill Null",  "description": "Fill null values with a literal" }
+  }
+}

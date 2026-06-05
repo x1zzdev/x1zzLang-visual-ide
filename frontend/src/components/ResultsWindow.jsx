@@ -1,137 +1,112 @@
 import React, { useState, useMemo } from 'react';
-import { Terminal, Database, FileText, Copy, Check } from 'lucide-react';
+import { Terminal, Database, Code2, Copy, Check, FileText } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
-const ResultsWindow = ({ selectedNode, originalNode, results, globalLogs, style = {} }) => {
-  const [activeTab, setActiveTab] = useState('data'); // 'logs' or 'data'
-  const [selectedPort, setSelectedPort] = useState(null);
-  const [prevNodeId, setPrevNodeId] = useState(null);
-  const [copied, setCopied] = useState(false);
+/**
+ * ResultsWindow
+ *
+ * Props:
+ *   selectedNode   - 현재 선택된 노드
+ *   originalNode   - handle click 시 원래 선택 노드
+ *   executeResult  - { rows: [], schema: {}, logs: [] }  ← POST /execute 응답
+ *   globalLogs     - string[]
+ *   x1zzCode       - string
+ *   style          - CSS 스타일 객체
+ */
+const ResultsWindow = ({
+  selectedNode,
+  originalNode,
+  executeResult = null,
+  globalLogs = [],
+  x1zzCode = '',
+  style = {}
+}) => {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState('x1zz'); // x1zz 탭을 기본으로
+  const [copied, setCopied]       = useState(false);
+
+  // executeResult가 들어오면 자동으로 Data Preview 탭으로 전환
+  React.useEffect(() => {
+    if (executeResult !== null && executeResult.rows && executeResult.rows.length > 0) {
+      setActiveTab('data');
+    }
+  }, [executeResult]);
+
   const [dataCopied, setDataCopied] = useState(false);
   const [selectedRows, setSelectedRows] = useState(new Set());
-  const [wrapText, setWrapText] = useState(false);
+  const [wrapText, setWrapText]   = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [scrollTop, setScrollTop] = useState(0);
 
-  const nodeId = selectedNode?.id;
-  const isInspectingUpstream = originalNode && selectedNode && originalNode.id !== selectedNode.id;
+  // ── executeResult 에서 데이터 추출 ──────────────────────────────────────────
+  // schema: { colName: typeName } 객체 또는 [{ name, type }] 배열 둘 다 허용
+  const schemaColumns = useMemo(() => {
+    if (!executeResult?.schema) return [];
+    if (Array.isArray(executeResult.schema)) return executeResult.schema;
+    return Object.entries(executeResult.schema).map(([name, type]) => ({ name, type: String(type) }));
+  }, [executeResult]);
 
-  // Reset selectedPort and rows if we select a different node
-  if (nodeId !== prevNodeId) {
-    setPrevNodeId(nodeId);
-    setSelectedPort(null);
-    setSelectedRows(new Set());
-    setSortConfig({ key: null, direction: 'asc' });
-  }
+  const rawRows = executeResult?.rows || [];
 
-  const nodeResult = nodeId ? results?.[nodeId] : null;
-  const hasPorts = nodeResult?.ports && Object.keys(nodeResult.ports).length > 0;
-  const availablePorts = hasPorts ? Object.keys(nodeResult.ports) : [];
-
-  // Determine active port to show. Default to 'true' if available, otherwise first port, or fallback to default
-  const activePort = selectedPort || (availablePorts.includes('true') ? 'true' : (availablePorts[0] || null));
-  const activePortData = hasPorts && activePort ? nodeResult.ports[activePort] : null;
-
-  // Extract preview data and columns
-  const schema = activePortData ? (activePortData.schema || []) : (nodeResult?.schema || []);
-  const rawPreviewData = activePortData ? (activePortData.preview || []) : (nodeResult?.preview || []);
-  const rowCount = activePortData ? (activePortData.row_count || 0) : (nodeResult?.row_count || 0);
-  
-  // Sort data
-  const previewData = useMemo(() => {
-    if (!sortConfig.key) return rawPreviewData;
-    const sorted = [...rawPreviewData];
+  const sortedRows = useMemo(() => {
+    if (!sortConfig.key) return rawRows;
+    const sorted = [...rawRows];
     sorted.sort((a, b) => {
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
-      if (aVal === null || aVal === undefined) aVal = '';
-      if (bVal === null || bVal === undefined) bVal = '';
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      let av = a[sortConfig.key] ?? '';
+      let bv = b[sortConfig.key] ?? '';
+      if (av < bv) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (av > bv) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
     return sorted;
-  }, [rawPreviewData, sortConfig]);
-  const colCount = activePortData ? (activePortData.column_count || 0) : (nodeResult?.column_count || 0);
-  const duration = nodeResult?.duration_ms || 0;
-  const error = nodeResult?.error;
-  const status = nodeResult?.status;
+  }, [rawRows, sortConfig]);
 
-  const nodeLogs = nodeResult?.logs || [];
+  const hasResult   = executeResult !== null;
+  const rowCount    = sortedRows.length;
+  const colCount    = schemaColumns.length;
 
-  const handleCopyLogs = () => {
-    let logText = "";
-    if (globalLogs.length > 0) {
-      logText += "GLOBAL ENGINE SYSTEM LOGS\n";
-      globalLogs.forEach(log => {
-        logText += `[${new Date().toLocaleTimeString()}] ${log}\n`;
-      });
-      logText += "\n";
-    }
-    if (selectedNode && nodeLogs.length > 0) {
-      logText += `SELECTED NODE LOGS (${selectedNode.data?.label || selectedNode.id})\n`;
-      nodeLogs.forEach(log => {
-        logText += `${log}\n`;
-      });
-    }
-    navigator.clipboard.writeText(logText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  // ── ユーティリティ ───────────────────────────────────────────────────────────
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const toggleRowSelection = (idx) => {
+    setSelectedRows(prev => {
+      const n = new Set(prev);
+      n.has(idx) ? n.delete(idx) : n.add(idx);
+      return n;
     });
   };
 
-  const toggleRowSelection = (rowIdx) => {
-    const newSelection = new Set(selectedRows);
-    if (newSelection.has(rowIdx)) {
-      newSelection.delete(rowIdx);
-    } else {
-      newSelection.add(rowIdx);
-    }
-    setSelectedRows(newSelection);
-  };
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
   const handleCopyData = () => {
-    let sortedIndices = [];
-    if (selectedRows.size === 0) {
-      // Copy all visible rows if none selected
-      sortedIndices = Array.from({ length: previewData.length }, (_, i) => i);
-    } else {
-      // Sort selected indices
-      sortedIndices = Array.from(selectedRows).sort((a, b) => a - b);
-    }
-    
-    if (sortedIndices.length === 0) return;
-    
-    // Get headers
-    const headers = schema.map(c => c.name).join('\t');
-    
-    // Get rows data
-    const rowsText = sortedIndices.map(idx => {
-      const row = previewData[idx];
-      return schema.map(col => {
-        const val = row[col.name];
-        return val !== null && val !== undefined ? String(val) : '';
-      }).join('\t');
-    }).join('\n');
-    
-    const clipboardText = headers + '\n' + rowsText;
-    
-    navigator.clipboard.writeText(clipboardText).then(() => {
+    const indices = selectedRows.size === 0
+      ? Array.from({ length: sortedRows.length }, (_, i) => i)
+      : Array.from(selectedRows).sort((a, b) => a - b);
+    if (indices.length === 0) return;
+    const header = schemaColumns.map(c => c.name).join('\t');
+    const body   = indices.map(i => schemaColumns.map(c => String(sortedRows[i]?.[c.name] ?? '')).join('\t')).join('\n');
+    navigator.clipboard.writeText(header + '\n' + body).then(() => {
       setDataCopied(true);
       setTimeout(() => setDataCopied(false), 2000);
     });
   };
 
+  const handleCopyLogs = () => {
+    const text = globalLogs.map(l => `[${new Date().toLocaleTimeString()}] ${l}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="results-window" style={style}>
-      {/* Header and Tabs */}
+
+      {/* ── 헤더 탭 ──────────────────────────────────────────────────────────── */}
       <div className="results-header">
         <div className="results-tabs">
           <button
@@ -139,321 +114,279 @@ const ResultsWindow = ({ selectedNode, originalNode, results, globalLogs, style 
             onClick={() => setActiveTab('data')}
           >
             <Database size={14} />
-            <span>Data Preview</span>
+            <span>{t('results.tabs.dataPreview')}</span>
           </button>
           <button
             className={`results-tab ${activeTab === 'logs' ? 'active' : ''}`}
             onClick={() => setActiveTab('logs')}
           >
             <Terminal size={14} />
-            <span>Execution Logs</span>
+            <span>{t('results.tabs.logs')}</span>
+          </button>
+          <button
+            className={`results-tab ${activeTab === 'x1zz' ? 'active' : ''}`}
+            onClick={() => setActiveTab('x1zz')}
+            style={{ color: activeTab === 'x1zz' ? '#7c3aed' : undefined }}
+            title={t('results.tabs.x1zzCodeTitle')}
+          >
+            <Code2 size={14} />
+            <span>{t('results.tabs.x1zzCode')}</span>
           </button>
         </div>
 
-        {/* Multi-port Selector */}
-        {hasPorts && activeTab === 'data' && (
-          <div className="results-port-selector">
-            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginRight: 4 }}>Port:</span>
-            {availablePorts.map((port) => (
-              <button
-                key={port}
-                className={`port-btn ${activePort === port ? 'active' : ''}`}
-                onClick={() => setSelectedPort(port)}
-              >
-                {port === 'true' ? 'T (True)' : port === 'false' ? 'F (False)' : port.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Selected Node Summary */}
+        {/* 요약 정보 */}
         <div className="results-summary">
-          {selectedNode ? (
-            status === 'success' ? (
-              <span>
-                {isInspectingUpstream && (
-                  <span style={{ color: '#8b5cf6', fontWeight: 'bold', marginRight: 8, padding: '2px 6px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '4px' }}>
-                    Incoming Data to {originalNode?.data?.label || originalNode?.id}
-                  </span>
-                )}
-                Node '{selectedNode.data?.label || selectedNode.id}' {hasPorts ? `[Port: ${activePort === 'true' ? 'True' : activePort === 'false' ? 'False' : activePort}]` : ''}: <strong>{rowCount}</strong> rows, <strong>{colCount}</strong> columns ({typeof duration === 'number' ? duration.toFixed(0) : '0'}ms)
-              </span>
-            ) : status === 'error' ? (
-              <span style={{ color: 'var(--color-error)' }}>
-                {isInspectingUpstream && (
-                  <span style={{ color: '#8b5cf6', fontWeight: 'bold', marginRight: 8, padding: '2px 6px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '4px' }}>
-                    Incoming Data to {originalNode?.data?.label || originalNode?.id}
-                  </span>
-                )}
-                Node '{selectedNode.data?.label || selectedNode.id}' failed.
-              </span>
-            ) : (
-              <span>
-                {isInspectingUpstream && (
-                  <span style={{ color: '#8b5cf6', fontWeight: 'bold', marginRight: 8, padding: '2px 6px', backgroundColor: 'rgba(139, 92, 246, 0.1)', borderRadius: '4px' }}>
-                    Incoming Data to {originalNode?.data?.label || originalNode?.id}
-                  </span>
-                )}
-                Node '{selectedNode.data?.label || selectedNode.id}' (Not executed)
-              </span>
-            )
+          {hasResult ? (
+            <span>
+              {t('results.summary.executionResult', {
+                rowCount,
+                colCount,
+                rowPlural: rowCount !== 1 ? 's' : '',
+                colPlural: colCount !== 1 ? 's' : ''
+              }).split(/<\/?strong>/).map((part, i) =>
+                i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+              )}
+            </span>
+          ) : selectedNode ? (
+            <span>{t('results.summary.notExecuted', { label: selectedNode.data?.label || selectedNode.id })}</span>
           ) : (
-            <span>No node selected</span>
+            <span>{t('results.summary.noNodeSelected')}</span>
           )}
         </div>
       </div>
 
-      {/* Pane Content */}
+      {/* ── 컨텐츠 ───────────────────────────────────────────────────────────── */}
       <div className="results-content">
+
+        {/* ── Data Preview ─────────────────────────────────────────────────── */}
         {activeTab === 'data' && (
           <div style={{ height: '100%' }}>
-            {!selectedNode ? (
+            {!hasResult ? (
               <div className="no-node-selected" style={{ padding: 20 }}>
                 <Database />
-                <p>Select a node on the canvas to inspect its output dataframe.</p>
+                <p>{t('results.data.runToPeek')}</p>
               </div>
-            ) : status === 'error' ? (
-              error?.toLowerCase().includes("awaiting connection") || error?.toLowerCase().includes("input dataframe is missing") || error?.toLowerCase().includes("missing input") || error?.toLowerCase().includes("requires an input") ? (
-                <div className="no-node-selected" style={{ color: 'var(--text-secondary)', padding: 20 }}>
-                  <span style={{ fontSize: '2.5rem', marginBottom: 10 }}>🔌</span>
-                  <p style={{ fontWeight: 600, color: '#f59e0b' }}>Awaiting Connection</p>
-                  <p style={{ fontSize: '0.85rem', marginTop: 5, maxWidth: '500px' }}>Connect an incoming data stream to this tool to begin processing data.</p>
-                </div>
-              ) : error?.toLowerCase().includes("pending configuration") ? (
-                <div className="no-node-selected" style={{ color: 'var(--text-secondary)', padding: 20 }}>
-                  <span style={{ fontSize: '2.5rem', marginBottom: 10 }}>⚙️</span>
-                  <p style={{ fontWeight: 600, color: '#f59e0b' }}>Pending Configuration</p>
-                  <p style={{ fontSize: '0.85rem', marginTop: 5, maxWidth: '500px' }}>{error.replace("Pending Configuration: ", "")}</p>
-                </div>
-              ) : (
-                <div className="no-node-selected" style={{ color: 'var(--color-error)', padding: 20 }}>
-                  <span style={{ fontSize: '2.5rem', marginBottom: 10 }}>&otimes;</span>
-                  <p style={{ fontWeight: 600 }}>Execution Failed</p>
-                  <p style={{ fontSize: '0.85rem', marginTop: 5, maxWidth: '500px' }}>{error}</p>
-                </div>
-              )
-            ) : status === 'success' ? (
-              previewData.length > 0 && schema.some(c => c.name === '__vibe_html_payload__') ? (
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc', padding: '20px', overflow: 'hidden', alignItems: 'flex-start', boxSizing: 'border-box' }}>
-                  <div style={{ 
-                    backgroundColor: 'white', 
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', 
-                    borderRadius: '8px', 
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    resize: 'both',
-                    overflow: 'auto',
-                    minWidth: '300px',
-                    minHeight: '200px',
-                    width: `${(parseInt(selectedNode?.data?.parameters?.width) || 800)}px`, 
-                    height: `${(parseInt(selectedNode?.data?.parameters?.height) || 500) + 45}px`,
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    boxSizing: 'border-box'
-                  }}>
-                    <div style={{ padding: '12px 16px', background: '#ffffff', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ whiteSpace: 'nowrap', marginRight: '30px' }}>Interactive Report Visualization 📊</span>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#94a3b8', whiteSpace: 'nowrap' }}>Hover to export</span>
-                    </div>
-                    <iframe 
-                      srcDoc={previewData[0]['__vibe_html_payload__']} 
-                      style={{ 
-                        width: '100%', 
-                        height: 'calc(100% - 45px)', 
-                        border: 'none', 
-                        background: 'white',
-                        transition: 'opacity 0.3s ease'
-                      }}
-                      title="Plotly Chart"
-                    />
-                  </div>
-                </div>
-              ) : previewData.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                  <div style={{ padding: '8px 12px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      {selectedRows.size > 0 && (
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {selectedRows.size} row{selectedRows.size > 1 ? 's' : ''} selected
-                        </span>
-                      )}
-                      <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={wrapText} 
-                          onChange={(e) => setWrapText(e.target.checked)} 
-                          style={{ margin: 0 }}
-                        />
-                        Wrap Text
-                      </label>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        className="copy-logs-btn" 
-                        onClick={() => {
-                          window.open(`http://localhost:8000/api/download/csv?nodeId=${nodeId}&portId=${activePort || ''}`, '_blank');
-                        }}
-                      >
-                        <FileText size={12} />
-                        Download CSV
-                      </button>
-                      <button className="copy-logs-btn" onClick={handleCopyData}>
-                        {dataCopied ? <Check size={12} color="var(--color-inout)" /> : <Copy size={12} />}
-                        {dataCopied ? "Copied Data" : (selectedRows.size > 0 ? "Copy Selected Rows" : "Copy Preview Data")}
-                      </button>
-                    </div>
-                  </div>
-                  <div 
-                    className="spreadsheet-container" 
-                    style={{ flex: 1, overflow: 'auto' }}
-                    onScroll={(e) => setScrollTop(e.target.scrollTop)}
-                  >
-                    <table className="spreadsheet" style={{ tableLayout: 'auto' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: '40px', minWidth: '40px', textAlign: 'center', background: 'var(--bg-secondary)' }}>#</th>
-                          {schema.map((col) => (
-                            <th 
-                              key={col.name} 
-                              onClick={() => handleSort(col.name)}
-                              style={{ resize: 'horizontal', overflow: 'hidden', minWidth: '80px', position: 'relative', cursor: 'pointer', userSelect: 'none' }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div>
-                                  {col.name}
-                                  {col.semantic_type === 'currency_usd' && (
-                                    <span title="Currency" style={{ marginLeft: '6px', color: 'var(--color-success)', fontWeight: 800 }}>$</span>
-                                  )}
-                                  {col.semantic_type === 'percentage' && (
-                                    <span title="Percentage" style={{ marginLeft: '6px', color: 'var(--color-accent)', fontWeight: 800 }}>%</span>
-                                  )}
-                                  <span className="col-header-type" style={{ marginLeft: '6px' }}>
-                                    {col.type && typeof col.type === 'string' ? col.type.split('.').pop() : 'Unknown'}
-                                  </span>
-                                </div>
-                                {sortConfig.key === col.name && (
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-accent)' }}>
-                                    {sortConfig.direction === 'asc' ? '▲' : '▼'}
-                                  </span>
-                                )}
-                              </div>
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          const ROW_HEIGHT = 32;
-                          const buffer = 10;
-                          const viewportRows = Math.ceil(800 / ROW_HEIGHT);
-                          const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - buffer);
-                          const endIndex = Math.min(previewData.length, startIndex + viewportRows + (buffer * 2));
-                          const visibleRows = previewData.slice(startIndex, endIndex);
-                          const topSpacerHeight = startIndex * ROW_HEIGHT;
-                          const bottomSpacerHeight = Math.max(0, (previewData.length - endIndex) * ROW_HEIGHT);
-
-                          return (
-                            <>
-                              {topSpacerHeight > 0 && (
-                                <tr style={{ height: topSpacerHeight }}>
-                                  <td colSpan={schema.length + 1} style={{ padding: 0, border: 'none' }}></td>
-                                </tr>
-                              )}
-                              {visibleRows.map((row, relativeIdx) => {
-                                const rowIdx = startIndex + relativeIdx;
-                                return (
-                                  <tr 
-                                    key={rowIdx} 
-                                    onClick={() => toggleRowSelection(rowIdx)}
-                                    style={{ 
-                                      cursor: 'pointer',
-                                      backgroundColor: selectedRows.has(rowIdx) ? 'rgba(59, 130, 246, 0.1)' : undefined,
-                                      height: ROW_HEIGHT
-                                    }}
-                                  >
-                                    <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600, background: 'var(--bg-secondary)', height: ROW_HEIGHT, padding: '0 8px' }}>
-                                      {rowIdx + 1}
-                                    </td>
-                                    {schema.map((col) => (
-                                      <td 
-                                        key={col.name} 
-                                        title={String(row[col.name] ?? '')}
-                                        style={wrapText ? { whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: '300px', lineHeight: '1.4', verticalAlign: 'top', padding: '0 8px' } : { height: ROW_HEIGHT, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}
-                                      >
-                                        {row[col.name] !== null && row[col.name] !== undefined ? String(row[col.name]) : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>null</span>}
-                                      </td>
-                                    ))}
-                                  </tr>
-                                );
-                              })}
-                              {bottomSpacerHeight > 0 && (
-                                <tr style={{ height: bottomSpacerHeight }}>
-                                  <td colSpan={schema.length + 1} style={{ padding: 0, border: 'none' }}></td>
-                                </tr>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="no-node-selected" style={{ padding: 20 }}>
-                  <Database />
-                  <p>Empty DataFrame. The execution returned 0 rows or columns.</p>
-                </div>
-              )
-            ) : (
+            ) : rowCount === 0 ? (
               <div className="no-node-selected" style={{ padding: 20 }}>
                 <Database />
-                <p>Workflow has not been executed yet. Click "Run Workflow" to see results.</p>
+                <p>{t('results.data.zeroRows')}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                {/* 툴바 */}
+                <div style={{ padding: '8px 12px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    {selectedRows.size > 0 && (
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {t('results.data.rowsSelected', { count: selectedRows.size, plural: selectedRows.size > 1 ? 's' : '' })}
+                      </span>
+                    )}
+                    <label style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                      <input type="checkbox" checked={wrapText} onChange={e => setWrapText(e.target.checked)} style={{ margin: 0 }} />
+                      {t('results.data.wrapText')}
+                    </label>
+                  </div>
+                  <button className="copy-logs-btn" onClick={handleCopyData}>
+                    {dataCopied ? <Check size={12} color="var(--color-inout)" /> : <Copy size={12} />}
+                    {dataCopied
+                      ? t('results.data.copied')
+                      : selectedRows.size > 0
+                        ? t('results.data.copySelected')
+                        : t('results.data.copyAll')}
+                  </button>
+                </div>
+
+                {/* 가상화 테이블 */}
+                <div
+                  className="spreadsheet-container"
+                  style={{ flex: 1, overflow: 'auto' }}
+                  onScroll={e => setScrollTop(e.target.scrollTop)}
+                >
+                  <table className="spreadsheet" style={{ tableLayout: 'auto' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 40, minWidth: 40, textAlign: 'center', background: 'var(--bg-secondary)' }}>#</th>
+                        {schemaColumns.map(col => (
+                          <th
+                            key={col.name}
+                            onClick={() => handleSort(col.name)}
+                            style={{ minWidth: 80, resize: 'horizontal', overflow: 'hidden', cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div>
+                                {col.name}
+                                <span className="col-header-type" style={{ marginLeft: 6 }}>
+                                  {String(col.type || '').split('.').pop()}
+                                </span>
+                              </div>
+                              {sortConfig.key === col.name && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--color-accent)' }}>
+                                  {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const ROW_HEIGHT = 32;
+                        const buffer = 10;
+                        const viewportRows = Math.ceil(800 / ROW_HEIGHT);
+                        const startIdx = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - buffer);
+                        const endIdx   = Math.min(sortedRows.length, startIdx + viewportRows + buffer * 2);
+                        const visible  = sortedRows.slice(startIdx, endIdx);
+                        const topSpace = startIdx * ROW_HEIGHT;
+                        const botSpace = Math.max(0, (sortedRows.length - endIdx) * ROW_HEIGHT);
+                        return (
+                          <>
+                            {topSpace > 0 && <tr style={{ height: topSpace }}><td colSpan={schemaColumns.length + 1} style={{ padding: 0, border: 'none' }} /></tr>}
+                            {visible.map((row, relIdx) => {
+                              const rowIdx = startIdx + relIdx;
+                              return (
+                                <tr key={rowIdx} onClick={() => toggleRowSelection(rowIdx)} style={{ cursor: 'pointer', backgroundColor: selectedRows.has(rowIdx) ? 'rgba(59,130,246,0.1)' : undefined, height: ROW_HEIGHT }}>
+                                  <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontWeight: 600, background: 'var(--bg-secondary)', padding: '0 8px' }}>{rowIdx + 1}</td>
+                                  {schemaColumns.map(col => (
+                                    <td
+                                      key={col.name}
+                                      title={String(row[col.name] ?? '')}
+                                      style={wrapText
+                                        ? { whiteSpace: 'pre-wrap', wordBreak: 'break-word', minWidth: 200, lineHeight: 1.4, verticalAlign: 'top', padding: '0 8px' }
+                                        : { height: ROW_HEIGHT, padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 300 }}
+                                    >
+                                      {row[col.name] !== null && row[col.name] !== undefined
+                                        ? String(row[col.name])
+                                        : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>null</span>}
+                                    </td>
+                                  ))}
+                                </tr>
+                              );
+                            })}
+                            {botSpace > 0 && <tr style={{ height: botSpace }}><td colSpan={schemaColumns.length + 1} style={{ padding: 0, border: 'none' }} /></tr>}
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
         )}
 
+        {/* ── Logs ─────────────────────────────────────────────────────────── */}
         {activeTab === 'logs' && (
           <div className="log-viewer">
-            {globalLogs.length === 0 && nodeLogs.length === 0 ? (
-              <div style={{ color: 'var(--text-muted)' }}>Console is empty. Run the workflow to generate logs.</div>
+            {globalLogs.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)' }}>
+                {t('results.logs.empty')}
+              </div>
             ) : (
               <>
-                {globalLogs.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 4, marginBottom: 8 }}>
-                      <div style={{ color: 'var(--color-accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <FileText size={12} /> GLOBAL ENGINE SYSTEM LOGS
-                      </div>
-                      <button className="copy-logs-btn" onClick={handleCopyLogs}>
-                        {copied ? <Check size={12} color="var(--color-inout)" /> : <Copy size={12} />}
-                        {copied ? "Copied" : "Copy Logs"}
-                      </button>
-                    </div>
-                    {globalLogs.map((log, idx) => (
-                      <div key={`g-${idx}`} className={`log-entry ${typeof log === 'string' && (log.includes('failed') || log.includes('Error')) ? 'error' : ''}`}>
-                        [{new Date().toLocaleTimeString()}] {log}
-                      </div>
-                    ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 4, marginBottom: 8 }}>
+                  <div style={{ color: 'var(--color-accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <FileText size={12} /> {t('results.logs.executionLogs')}
                   </div>
-                )}
-                {selectedNode && nodeLogs.length > 0 && (
-                  <div>
-                    <div style={{ color: 'var(--color-inout)', fontWeight: 600, borderBottom: '1px solid var(--border-color)', paddingBottom: 4, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Terminal size={12} /> SELECTED NODE LOGS ({selectedNode.data?.label || selectedNode.id})
-                    </div>
-                    {nodeLogs.map((log, idx) => (
-                      <div key={`n-${idx}`} className={`log-entry ${typeof log === 'string' && log.toLowerCase().includes('error') ? 'error' : typeof log === 'string' && log.toLowerCase().includes('warning') ? 'warning' : ''}`}>
-                        {log}
-                      </div>
-                    ))}
+                  <button className="copy-logs-btn" onClick={handleCopyLogs}>
+                    {copied ? <Check size={12} color="var(--color-inout)" /> : <Copy size={12} />}
+                    {copied ? t('results.logs.copied') : t('results.logs.copyLogs')}
+                  </button>
+                </div>
+                {globalLogs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={`log-entry ${typeof log === 'string' && (log.includes('failed') || log.includes('Error') || log.includes('❌')) ? 'error' : ''}`}
+                  >
+                    [{new Date().toLocaleTimeString()}] {log}
                   </div>
-                )}
+                ))}
               </>
             )}
           </div>
         )}
+
+        {/* ── x1zz Code ────────────────────────────────────────────────────── */}
+        {activeTab === 'x1zz' && (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#1e1e2e' }}>
+            {/* 헤더 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 12px', background: '#2a273f', borderBottom: '1px solid #383650', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Code2 size={13} color="#c084fc" />
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {t('results.code.title')}
+                </span>
+                <span style={{ fontSize: '0.65rem', color: '#6b7280', background: '#383650', padding: '1px 6px', borderRadius: 4 }}>
+                  .xzz
+                </span>
+              </div>
+              <button
+                className="copy-logs-btn"
+                style={{ background: '#2a273f', color: '#a5b4fc', border: '1px solid #383650' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(x1zzCode).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  });
+                }}
+              >
+                {copied ? <Check size={12} color="#86efac" /> : <Copy size={12} />}
+                {copied ? t('results.code.copied') : t('results.code.copyCode')}
+              </button>
+            </div>
+
+            {/* 코드 본문 (구문 강조) */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+              {x1zzCode ? (
+                <pre style={{ margin: 0, fontFamily: "'JetBrains Mono','Fira Code','Consolas',monospace", fontSize: '0.8rem', lineHeight: 1.7, color: '#e2e8f0', whiteSpace: 'pre', tabSize: 2 }}>
+                  {x1zzCode.split('\n').map((line, idx) => {
+                    let styledLine;
+                    if (line.trim().startsWith('//')) {
+                      styledLine = <span key={idx} style={{ color: '#6b7280' }}>{line}</span>;
+                    } else if (line.trim().startsWith('type ')) {
+                      styledLine = <span key={idx} style={{ color: '#c084fc' }}>{line}</span>;
+                    } else if (/^\s*v\s+/.test(line)) {
+                      const m = line.match(/^(v\s+)(\w+)(\s*=\s*)(.*)$/);
+                      styledLine = m ? (
+                        <span key={idx}>
+                          <span style={{ color: '#a78bfa' }}>v </span>
+                          <span style={{ color: '#7dd3fc' }}>{m[2]}</span>
+                          <span style={{ color: '#94a3b8' }}>{m[3]}</span>
+                          <span style={{ color: '#e2e8f0' }}>{m[4]}</span>
+                        </span>
+                      ) : <span key={idx} style={{ color: '#e2e8f0' }}>{line}</span>;
+                    } else if (line.trim().startsWith('|>')) {
+                      const m = line.match(/^(\s*\|>\s*)(\w+)(.*)$/);
+                      styledLine = m ? (
+                        <span key={idx}>
+                          <span style={{ color: '#f97316' }}>{m[1]}</span>
+                          <span style={{ color: '#34d399' }}>{m[2]}</span>
+                          <span style={{ color: '#e2e8f0' }}>{m[3]}</span>
+                        </span>
+                      ) : <span key={idx} style={{ color: '#f97316' }}>{line}</span>;
+                    } else {
+                      styledLine = <span key={idx} style={{ color: '#e2e8f0' }}>{line}</span>;
+                    }
+                    return (
+                      <div key={idx} style={{ display: 'flex', minHeight: '1.4em' }}>
+                        <span style={{ width: '2.5rem', color: '#4b5563', textAlign: 'right', marginRight: '1rem', flexShrink: 0, userSelect: 'none', fontSize: '0.72rem' }}>
+                          {idx + 1}
+                        </span>
+                        {styledLine}
+                      </div>
+                    );
+                  })}
+                </pre>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280' }}>
+                  <Code2 size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
+                  <p style={{ fontSize: '0.85rem', margin: 0 }}>{t('results.code.noNodes')}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
