@@ -10,6 +10,7 @@ import CustomNode from './components/CustomNode';
 import CommentNode from './components/CommentNode';
 import ContainerNode from './components/ContainerNode';
 import { transpileToX1zz } from './transpiler/x1zzTranspiler.js';
+import { parseStdout } from './transpiler/stdoutParser.js';
 import './App.css';
 
 // ── 백엔드 API Base URL ───────────────────────────────────────────────────────
@@ -128,16 +129,20 @@ function resolveUpstreamSchema(nodeId, nodes, edges) {
 
 // ── 지원 도구 목록 (SUPPORTED_OPS 전용) ──────────────────────────────────────
 const BUILTIN_TOOLS = [
-  { id: 'fileInput', name: 'File Input', category: 'inout',     icon: 'Database',      description: 'Load data from a CSV/Excel file' },
-  { id: 'filter',    name: 'Filter',     category: 'prep',      icon: 'Filter',        description: 'Filter rows by condition' },
-  { id: 'select',    name: 'Select',     category: 'prep',      icon: 'Columns',       description: 'Select columns' },
-  { id: 'groupBy',   name: 'Group By',   category: 'transform', icon: 'Group',         description: 'Group by column and aggregate (count/sum/mean/min/max)' },
-  { id: 'count',     name: 'Count',      category: 'transform', icon: 'Hash',          description: 'Count rows' },
-  { id: 'sort',      name: 'Sort',       category: 'prep',      icon: 'ArrowUpDown',   description: 'Sort rows by column (orderBy)' },
-  { id: 'take',      name: 'Take',       category: 'prep',      icon: 'Scissors',      description: 'Take first N rows' },
-  { id: 'dropNull',  name: 'Drop Null',  category: 'prep',      icon: 'Trash2',        description: 'Drop rows with null values' },
-  { id: 'fillNull',  name: 'Fill Null',  category: 'prep',      icon: 'PenLine',       description: 'Fill null values with a literal' },
+  { id: 'fileInput',   name: 'File Input',   category: 'inout',     icon: 'Database',      description: 'Load data from a CSV/Excel file' },
+  { id: 'filter',      name: 'Filter',       category: 'prep',      icon: 'Filter',        description: 'Filter rows by condition' },
+  { id: 'select',      name: 'Select',       category: 'prep',      icon: 'Columns',       description: 'Select columns' },
+  { id: 'groupBy',     name: 'Group By',     category: 'transform', icon: 'Group',         description: 'Group by column and aggregate (count/sum/mean/min/max)' },
+  { id: 'count',       name: 'Count',        category: 'transform', icon: 'Hash',          description: 'Count rows' },
+  { id: 'sort',        name: 'Sort',         category: 'prep',      icon: 'ArrowUpDown',   description: 'Sort rows by column (orderBy)' },
+  { id: 'take',        name: 'Take',         category: 'prep',      icon: 'Scissors',      description: 'Take first N rows' },
+  { id: 'dropNull',    name: 'Drop Null',    category: 'prep',      icon: 'Trash2',        description: 'Drop rows with null values' },
+  { id: 'fillNull',    name: 'Fill Null',    category: 'prep',      icon: 'PenLine',       description: 'Fill null values with a literal' },
+  { id: 'join',        name: 'Join',         category: 'transform', icon: 'GitMerge',      description: 'Join two datasets on a key column' },
+  { id: 'withColumn',  name: 'With Column',  category: 'transform', icon: 'PlusSquare',    description: 'Add or replace a column with an expression' },
+  { id: 'chart',       name: 'Chart',        category: 'transform', icon: 'BarChart2',     description: 'Visualize data as a chart' },
 ];
+
 
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
@@ -151,6 +156,7 @@ function App() {
   const [edges, setEdges, onEdgesChange]      = useEdgesState(activeTab.edges || []);
   const [isRunning, setIsRunning]       = useState(false);
   const [executeResult, setExecuteResult] = useState(null); // { rows, schema, logs }
+  const [executionEvents, setExecutionEvents] = useState([]); // ExecutionEvent[] — parsed stdout
   const [globalLogs, setGlobalLogs]     = useState(activeTab.globalLogs || []);
   const [isDirty, setIsDirty]           = useState(activeTab.isDirty || false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
@@ -585,6 +591,9 @@ function App() {
 
       if (data.success) {
         setExecuteResult({ rows: data.rows || [], schema: data.schema || {}, logs: data.logs || [] });
+        // stdout 파싱: data.stdout(raw lines) 우선, 없으면 data.logs 로 폴백
+        const rawStdout = Array.isArray(data.stdout) ? data.stdout : (data.logs || []);
+        setExecutionEvents(parseStdout(rawStdout));
         setGlobalLogs([
           '✅ Execution complete.',
           ...(data.logs || []),
@@ -597,6 +606,13 @@ function App() {
         })));
       } else {
         const errMsg = data.error || 'Unknown execution error';
+        // 실패 시 ErrorEvent 구성
+        const failLines = [
+          '[x1zz:error]',
+          `ERROR[EXEC]: ${errMsg}`,
+          ...(data.logs || []),
+        ];
+        setExecutionEvents(parseStdout(failLines));
         setGlobalLogs([`❌ Execution failed: ${errMsg}`, ...(data.logs || [])]);
         setNodes(nds => nds.map(n => ({
           ...n,
@@ -604,6 +620,13 @@ function App() {
         })));
       }
     } catch (err) {
+      // 네트워크 오류 시 ErrorEvent + AI_SUGGESTION 구성
+      const netLines = [
+        '[x1zz:error]',
+        `ERROR[NETWORK]: ${err.message}`,
+        `AI_SUGGESTION: x1zzLang 백엔드가 실행 중인지 확인하세요 (${API_BASE}/execute). .xzz 파일을 내보내어 직접 실행할 수도 있습니다.`,
+      ];
+      setExecutionEvents(parseStdout(netLines));
       setGlobalLogs([
         `❌ Backend error: ${err.message}`,
         '💡 Is the x1zzLang backend running?',
@@ -674,16 +697,20 @@ function App() {
 
     // 기본 파라미터 (SUPPORTED_OPS 전용)
     const DEFAULT_PARAMS = {
-      fileInput: { filePath: '', fileType: 'csv', detectedSchema: [] },
-      filter:    { column: '', operator: '==', value: '' },
-      select:    { columns: [] },
-      groupBy:   { column: '', agg: 'count' },
-      count:     {},
-      sort:      { column: '', descending: false },
-      take:      { n: 100 },
-      dropNull:  { columns: [] },
-      fillNull:  { column: '', value: '' },
+      fileInput:  { filePath: '', fileType: 'csv', detectedSchema: [] },
+      filter:     { column: '', operator: '==', value: '' },
+      select:     { columns: [] },
+      groupBy:    { column: '', agg: 'count' },
+      count:      {},
+      sort:       { column: '', descending: false },
+      take:       { n: 100 },
+      dropNull:   { columns: [] },
+      fillNull:   { column: '', value: '' },
+      join:       { left: '', right: '', on: '', joinType: 'inner' },
+      withColumn: { col: '', expr: '' },
+      chart:      { chartType: 'bar', x: '', y: '', title: '' },
     };
+
 
     const maxId = nodes.reduce((max, n) => { const m = n.id.match(/^node_(\d+)$/); return m && parseInt(m[1]) < 1000000 ? Math.max(max, parseInt(m[1])) : max; }, 0);
     const newNodeId = `node_${maxId + 1}`;
@@ -857,6 +884,7 @@ function App() {
               selectedNode={inspectedNode}
               originalNode={nodes.find(n => n.id === selectedNodeId)}
               executeResult={executeResult}
+              executionEvents={executionEvents}
               globalLogs={globalLogs}
               x1zzCode={x1zzCode}
               style={{ height: `${resultsHeight}px` }}

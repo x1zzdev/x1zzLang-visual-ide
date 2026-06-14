@@ -40,9 +40,13 @@
       "take": "Take",
       "dropNull": "Drop Null",
       "fillNull": "Fill Null",
+      "join": "Join",
+      "withColumn": "With Column",
+      "chart": "Chart",
       "comment": "Comment",
       "container": "Container"
     },
+
     "fileInput": {
       "filePath": "File Path",
       "filePathPlaceholder": "e.g. data.csv",
@@ -96,6 +100,25 @@
       "valueHint": "Use a number, true, false, or a text string",
       "valuePlaceholder": "e.g.  0  or  \"N/A\""
     },
+    "join": {
+      "joinType": "Join Type",
+      "left": "Left Dataset Variable",
+      "leftHint": "Variable name of the left-side dataset",
+      "right": "Right Dataset Variable",
+      "rightHint": "Variable name of the right-side dataset",
+      "on": "Join Key Column"
+    },
+    "withColumn": {
+      "col": "New Column Name",
+      "expr": "Expression",
+      "exprHint": "x1zzLang expression, e.g. col(\"Age\") * 2 or \"constant\""
+    },
+    "chart": {
+      "chartType": "Chart Type",
+      "x": "X-Axis Column",
+      "y": "Y-Axis Column",
+      "title": "Chart Title (optional)"
+    },
     "comment": {
       "description": "Double-click the comment node on the canvas to edit its text."
     },
@@ -104,6 +127,7 @@
     },
     "unsupportedNode": "Node type {{type}} is not a supported operation."
   },
+
   "tabs": {
     "renamePrompt": "Rename Tab:"
   },
@@ -150,7 +174,11 @@
     "count":     { "name": "Count",      "description": "Count rows" },
     "sort":      { "name": "Sort",       "description": "Sort rows by column (orderBy)" },
     "take":      { "name": "Take",       "description": "Take first N rows" },
-    "dropNull":  { "name": "Drop Null",  "description": "Drop rows with null values" },
-    "fillNull":  { "name": "Fill Null",  "description": "Fill null values with a literal" }
+    "dropNull":   { "name": "Drop Null",    "description": "Drop rows with null values" },
+    "fillNull":   { "name": "Fill Null",    "description": "Fill null values with a literal" },
+    "join":       { "name": "Join",         "description": "Join two datasets on a key column" },
+    "withColumn": { "name": "With Column",  "description": "Add or replace a column with an expression" },
+    "chart":      { "name": "Chart",        "description": "Visualize data as a chart" }
   }
 }
+

@@ -203,7 +203,52 @@ export const NODE_MAPPINGS = {
 
     return { type: 'pipeline', lines: [`|> fillNull("${column}", ${value})`] };
   },
+
+  // ── join ──────────────────────────────────────────────────────────────────
+  // |> join left right on col
+  join: (node) => {
+    const params    = node.data?.parameters || {};
+    const left      = params.left  || 'left';
+    const right     = params.right || 'right';
+    const on        = params.on    || '_col';
+    const joinType  = params.joinType || 'inner';
+
+    return {
+      type: 'pipeline',
+      lines: [`|> join ${joinType} ${left} ${right} on "${on}"`],
+    };
+  },
+
+  // ── withColumn ────────────────────────────────────────────────────────────
+  // |> withColumn col = expr
+  withColumn: (node) => {
+    const params = node.data?.parameters || {};
+    const col    = params.col  || 'new_col';
+    const expr   = params.expr || '"value"';
+
+    return {
+      type: 'pipeline',
+      lines: [`|> withColumn ${col} = ${expr}`],
+    };
+  },
+
+  // ── chart ─────────────────────────────────────────────────────────────────
+  // |> chart { type: "bar", x: "col", y: "col", title: "title" }
+  chart: (node) => {
+    const params    = node.data?.parameters || {};
+    const chartType = params.chartType || 'bar';
+    const x         = params.x         || '_col';
+    const y         = params.y         || '_col';
+    const title     = params.title     || '';
+
+    const titlePart = title ? `, title: "${title}"` : '';
+    return {
+      type: 'pipeline',
+      lines: [`|> chart { type: "${chartType}", x: "${x}", y: "${y}"${titlePart} }`],
+    };
+  },
 };
+
 
 // ─── 폴백 ─────────────────────────────────────────────────────────────────────
 

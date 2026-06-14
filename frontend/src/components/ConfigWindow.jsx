@@ -528,8 +528,77 @@ const ConfigWindow = ({
     </>
   );
 
+  // join ───────────────────────────────────────────────────────────────────────
+  const renderJoin = () => (
+    <>
+      <Field label={t('config.join.joinType')}>
+        <SafeSelect className="config-input" style={{ width: '100%' }} value={parameters.joinType || 'inner'} onChange={e => update({ joinType: e.target.value })}>
+          <option value="inner">inner</option>
+          <option value="left">left</option>
+          <option value="right">right</option>
+          <option value="outer">outer</option>
+        </SafeSelect>
+      </Field>
+      <Field label={t('config.join.left')} hint={t('config.join.leftHint')}>
+        <SafeInput className="config-input" style={{ width: '100%' }} value={parameters.left || ''} onChange={e => update({ left: e.target.value })} placeholder="e.g. ds1" />
+      </Field>
+      <Field label={t('config.join.right')} hint={t('config.join.rightHint')}>
+        <SafeInput className="config-input" style={{ width: '100%' }} value={parameters.right || ''} onChange={e => update({ right: e.target.value })} placeholder="e.g. ds2" />
+      </Field>
+      <Field label={t('config.join.on')}>
+        <ColSelect value={parameters.on} onChange={v => update({ on: v })} name="join-on" />
+        {!upstreamSchema.length && (
+          <SafeInput className="config-input" style={{ width: '100%', marginTop: 4 }} value={parameters.on || ''} onChange={e => update({ on: e.target.value })} placeholder="key column name" />
+        )}
+      </Field>
+    </>
+  );
+
+  // withColumn ─────────────────────────────────────────────────────────────────
+  const renderWithColumn = () => (
+    <>
+      <Field label={t('config.withColumn.col')}>
+        <SafeInput className="config-input" style={{ width: '100%' }} value={parameters.col || ''} onChange={e => update({ col: e.target.value })} placeholder='e.g. new_col' />
+      </Field>
+      <Field label={t('config.withColumn.expr')} hint={t('config.withColumn.exprHint')}>
+        <SafeInput className="config-input" style={{ width: '100%' }} value={parameters.expr || ''} onChange={e => update({ expr: e.target.value })} placeholder='e.g. col("Age") * 2' />
+      </Field>
+    </>
+  );
+
+  // chart ──────────────────────────────────────────────────────────────────────
+  const renderChart = () => (
+    <>
+      <Field label={t('config.chart.chartType')}>
+        <SafeSelect className="config-input" style={{ width: '100%' }} value={parameters.chartType || 'bar'} onChange={e => update({ chartType: e.target.value })}>
+          <option value="bar">bar</option>
+          <option value="line">line</option>
+          <option value="scatter">scatter</option>
+          <option value="pie">pie</option>
+          <option value="area">area</option>
+        </SafeSelect>
+      </Field>
+      <Field label={t('config.chart.x')}>
+        <ColSelect value={parameters.x} onChange={v => update({ x: v })} name="chart-x" />
+        {!upstreamSchema.length && (
+          <SafeInput className="config-input" style={{ width: '100%', marginTop: 4 }} value={parameters.x || ''} onChange={e => update({ x: e.target.value })} placeholder="x-axis column" />
+        )}
+      </Field>
+      <Field label={t('config.chart.y')}>
+        <ColSelect value={parameters.y} onChange={v => update({ y: v })} name="chart-y" />
+        {!upstreamSchema.length && (
+          <SafeInput className="config-input" style={{ width: '100%', marginTop: 4 }} value={parameters.y || ''} onChange={e => update({ y: e.target.value })} placeholder="y-axis column" />
+        )}
+      </Field>
+      <Field label={t('config.chart.title')}>
+        <SafeInput className="config-input" style={{ width: '100%' }} value={parameters.title || ''} onChange={e => update({ title: e.target.value })} placeholder='e.g. Sales by Department' />
+      </Field>
+    </>
+  );
+
   // comment / container ────────────────────────────────────────────────────────
   const renderComment = () => (
+
     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
       {t('config.comment.description')}
     </p>
@@ -578,9 +647,13 @@ const ConfigWindow = ({
       case 'sort':       return renderSort();
       case 'take':       return renderTake();
       case 'dropNull':   return renderDropNull();
-      case 'fillNull':   return renderFillNull();
-      case 'comment':    return renderComment();
-      case 'container':  return renderContainer();
+      case 'fillNull':    return renderFillNull();
+      case 'join':        return renderJoin();
+      case 'withColumn':  return renderWithColumn();
+      case 'chart':       return renderChart();
+      case 'comment':     return renderComment();
+      case 'container':   return renderContainer();
+
       default:
         return (
           <div style={{ padding: 16 }}>

@@ -40,9 +40,13 @@
       "take": "상위 N행",
       "dropNull": "결측값 행 제거",
       "fillNull": "결측값 채우기",
+      "join": "조인",
+      "withColumn": "열 추가/변환",
+      "chart": "차트",
       "comment": "주석",
       "container": "컨테이너"
     },
+
     "fileInput": {
       "filePath": "파일 경로",
       "filePathPlaceholder": "예: data.csv",
@@ -96,6 +100,25 @@
       "valueHint": "숫자, true, false 또는 텍스트 문자열을 사용하세요",
       "valuePlaceholder": "예:  0  또는  \"N/A\""
     },
+    "join": {
+      "joinType": "조인 유형",
+      "left": "왼쪽 데이터셋 변수",
+      "leftHint": "왼쪽 데이터셋의 변수 이름",
+      "right": "오른쪽 데이터셋 변수",
+      "rightHint": "오른쪽 데이터셋의 변수 이름",
+      "on": "조인 키 컬럼"
+    },
+    "withColumn": {
+      "col": "새 컬럼 이름",
+      "expr": "표현식",
+      "exprHint": "x1zzLang 표현식, 예: col(\"Age\") * 2 또는 \"상수값\""
+    },
+    "chart": {
+      "chartType": "차트 유형",
+      "x": "X축 컬럼",
+      "y": "Y축 컬럼",
+      "title": "차트 제목 (선택 사항)"
+    },
     "comment": {
       "description": "캔버스에서 주석 노드를 더블클릭하여 텍스트를 편집하세요."
     },
@@ -104,6 +127,7 @@
     },
     "unsupportedNode": "노드 타입 {{type}}은(는) 지원되지 않는 작업입니다."
   },
+
   "tabs": {
     "renamePrompt": "탭 이름 변경:"
   },
@@ -150,7 +174,11 @@
     "count":     { "name": "행 수 계산",  "description": "행 수를 계산합니다" },
     "sort":      { "name": "정렬",        "description": "컬럼으로 행을 정렬합니다 (orderBy)" },
     "take":      { "name": "상위 N행",    "description": "상위 N개 행을 가져옵니다" },
-    "dropNull":  { "name": "결측값 제거", "description": "결측값이 있는 행을 제거합니다" },
-    "fillNull":  { "name": "결측값 채우기", "description": "결측값을 리터럴로 채웁니다" }
+    "dropNull":   { "name": "결측값 제거",    "description": "결측값이 있는 행을 제거합니다" },
+    "fillNull":   { "name": "결측값 채우기",  "description": "결측값을 리터럴로 채웁니다" },
+    "join":       { "name": "조인",           "description": "키 컬럼으로 두 데이터셋을 조인합니다" },
+    "withColumn": { "name": "열 추가/변환",   "description": "표현식으로 컬럼을 추가하거나 변환합니다" },
+    "chart":      { "name": "차트",           "description": "데이터를 차트로 시각화합니다" }
   }
 }
+
