@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n.js';
 
 /**
- * ToolPalette
+ * ToolPalette — x1zzLang Visual IDE
  *
- * Props (SUPPORTED_OPS 전용으로 단순화):
+ * Props:
  *   onRunPipeline   - () => void
  *   onSaveWorkflow  - () => void
  *   onLoadWorkflow  - (event) => void
@@ -16,6 +16,10 @@ import i18n from '../i18n.js';
  *   autoRun         - boolean
  *   setAutoRun      - (val) => void
  *   availableTools  - Tool[]
+ *   viewMode        - 'workflow' | 'split' | 'code'
+ *   setViewMode     - (mode) => void
+ *   x1zzCode        - string
+ *   hasResult       - boolean
  */
 const ToolPalette = ({
   onRunPipeline,
@@ -26,6 +30,10 @@ const ToolPalette = ({
   autoRun,
   setAutoRun,
   availableTools = [],
+  viewMode = 'workflow',
+  setViewMode,
+  x1zzCode = '',
+  hasResult = false,
 }) => {
   const { t } = useTranslation();
   const fileInputRef  = useRef(null);
@@ -38,7 +46,7 @@ const ToolPalette = ({
   const [canRedo, setCanRedo]               = useState(false);
   const [currentLang, setCurrentLang]       = useState(i18n.language || 'en');
 
-  // ── HistoryUpdate イベント ───────────────────────────────────────────────────
+  // ── HistoryUpdate event ──────────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => { setCanUndo(e.detail.canUndo); setCanRedo(e.detail.canRedo); };
     window.addEventListener('vibe-history-update', handler);
@@ -60,18 +68,18 @@ const ToolPalette = ({
     }
   };
 
-  // ── 언어 전환 ────────────────────────────────────────────────────────────────
+  // ── Language toggle ──────────────────────────────────────────────────────────
   const toggleLanguage = () => {
     const next = currentLang === 'en' ? 'ko' : 'en';
     i18n.changeLanguage(next);
     setCurrentLang(next);
-    localStorage.setItem('vibeetl_lang', next);
+    localStorage.setItem('x1zzlang_lang', next);
   };
 
   // ── Favorites ───────────────────────────────────────────────────────────────
   const [favoriteToolIds, setFavoriteToolIds] = useState(() => {
     try {
-      const saved = localStorage.getItem('vibeetl_favorites');
+      const saved = localStorage.getItem('x1zzlang_favorites');
       if (saved) return JSON.parse(saved);
     } catch (_) {}
     return ['fileInput', 'filter', 'select', 'groupBy'];
@@ -81,7 +89,7 @@ const ToolPalette = ({
     e.stopPropagation();
     setFavoriteToolIds(prev => {
       const next = prev.includes(toolId) ? prev.filter(id => id !== toolId) : [...prev, toolId];
-      localStorage.setItem('vibeetl_favorites', JSON.stringify(next));
+      localStorage.setItem('x1zzlang_favorites', JSON.stringify(next));
       return next;
     });
   };
@@ -89,10 +97,10 @@ const ToolPalette = ({
   const resetFavorites = () => {
     const defaults = ['fileInput', 'filter', 'select', 'groupBy'];
     setFavoriteToolIds(defaults);
-    localStorage.removeItem('vibeetl_favorites');
+    localStorage.removeItem('x1zzlang_favorites');
   };
 
-  // ── Dropdown 외부 클릭 닫기 ─────────────────────────────────────────────────
+  // ── Dropdown outside click ───────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -104,24 +112,22 @@ const ToolPalette = ({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // ── 드래그 시작 ─────────────────────────────────────────────────────────────
+  // ── Drag start ──────────────────────────────────────────────────────────────
   const onDragStart = (e, nodeType) => {
     e.dataTransfer.setData('application/reactflow', nodeType);
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  // ── 번역된 카테고리 타이틀 ──────────────────────────────────────────────────
+  // ── Category title ───────────────────────────────────────────────────────────
   const getCategoryTitle = (catKey) => {
     const key = `categories.${catKey}`;
     const translated = t(key);
-    // 번역 키가 없으면 catKey를 단어 형태로 변환
     if (translated === key) {
       return catKey.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
     return translated;
   };
 
-  // ── 번역된 도구 이름/설명 ────────────────────────────────────────────────────
   const getToolName = (tool) => {
     const key = `tools.${tool.id}.name`;
     const translated = t(key);
@@ -134,7 +140,7 @@ const ToolPalette = ({
     return translated === key ? tool.description : translated;
   };
 
-  // ── 카테고리별 그룹화 ────────────────────────────────────────────────────────
+  // ── Category grouping ────────────────────────────────────────────────────────
   const categories = useMemo(() => {
     const grouped = { favorites: [] };
     availableTools.forEach(tool => {
@@ -146,50 +152,66 @@ const ToolPalette = ({
     return grouped;
   }, [availableTools, favoriteToolIds]);
 
+  // ── DSL step: determine current step ─────────────────────────────────────────
+  const dslStep = hasResult ? 3 : (isRunning ? 2 : (x1zzCode ? 1 : 0));
+
+  const dslSteps = [
+    { label: 'Workflow', step: 0 },
+    { label: 'DSL',      step: 1 },
+    { label: 'Compiler', step: 2 },
+    { label: 'Execute',  step: 3 },
+  ];
+
   return (
     <div className="tool-palette">
-      {/* ── 로고 ─────────────────────────────────────────────────────────────── */}
+      {/* ── Logo: x1zzLang Visual IDE ─────────────────────────────────────── */}
       <div className="palette-logo">
-        <div className="logo-icon">ETL</div>
-        <div className="logo-text">x1zzETL</div>
+        <div className="logo-text">
+          x1zz<span>Lang</span> Visual IDE
+        </div>
       </div>
 
-      {/* ── Add Tool 드롭다운 ──────────────────────────────────────────────────── */}
+      <div className="toolbar-divider" />
+
+      {/* ── Add Tool Dropdown ──────────────────────────────────────────────── */}
       <div
         className="tool-dropdown-container"
-        style={{ margin: '0 16px', display: 'flex', alignItems: 'center', position: 'relative' }}
+        style={{ position: 'relative', flexShrink: 0 }}
         ref={dropdownRef}
       >
         <button
+          className="toolbar-btn-action"
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'white', color: 'var(--text-primary)', fontSize: '0.8rem', fontFamily: 'var(--font-primary)', fontWeight: 600, cursor: 'pointer', minWidth: '160px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           title={t('toolbar.addToolTitle')}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Plus size={14} />
-            <span>{t('toolbar.addTool')}</span>
-          </div>
+          <Plus size={13} />
+          <span>{t('toolbar.addTool')}</span>
         </button>
 
         {isDropdownOpen && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'white', border: '1px solid var(--border-color)', borderRadius: '6px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', width: '220px', zIndex: 1000, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>
-              <Search size={14} style={{ color: '#94a3b8', marginRight: '8px' }} />
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-color)',
+            borderRadius: '7px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            width: '210px', zIndex: 1000, overflow: 'hidden'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-color)' }}>
+              <Search size={13} style={{ color: 'var(--text-muted)', marginRight: 7, flexShrink: 0 }} />
               <input
                 autoFocus
                 type="text"
                 placeholder={t('toolbar.searchTools')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '12px' }}
+                style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.8rem', background: 'transparent', color: 'var(--text-primary)' }}
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#94a3b8' }}>
-                  <X size={14} />
+                <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)', padding: 0 }}>
+                  <X size={12} />
                 </button>
               )}
             </div>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
               {Object.entries(categories)
                 .filter(([k]) => k !== 'favorites')
                 .map(([catKey, tools]) => {
@@ -202,7 +224,7 @@ const ToolPalette = ({
                   if (filtered.length === 0) return null;
                   return (
                     <div key={catKey}>
-                      <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', backgroundColor: '#f8fafc' }}>
+                      <div style={{ padding: '5px 10px', fontSize: '0.58rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px', background: 'var(--bg-secondary)' }}>
                         {getCategoryTitle(catKey)}
                       </div>
                       {filtered.map(tool => (
@@ -213,12 +235,12 @@ const ToolPalette = ({
                             setIsDropdownOpen(false);
                             setSearchQuery('');
                           }}
-                          style={{ padding: '8px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #f1f5f9' }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                          style={{ padding: '7px 10px', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          {React.createElement(Icons[tool.icon] || Icons.Square, { size: 14, style: { color: '#64748b' } })}
-                          <span style={{ fontWeight: 600, color: '#334155' }}>{getToolName(tool)}</span>
+                          {React.createElement(Icons[tool.icon] || Icons.Square, { size: 13, style: { color: 'var(--text-muted)', flexShrink: 0 } })}
+                          <span style={{ fontWeight: 600 }}>{getToolName(tool)}</span>
                         </div>
                       ))}
                     </div>
@@ -229,23 +251,23 @@ const ToolPalette = ({
         )}
       </div>
 
-      {/* ── 카테고리 팔레트 ──────────────────────────────────────────────────────── */}
-      <div className="tool-categories" style={{ overflowX: 'auto', overflowY: 'hidden', paddingTop: '10px', paddingBottom: '6px' }}>
+      {/* ── Category Palette ───────────────────────────────────────────────── */}
+      <div className="tool-categories">
         {Object.entries(categories).map(([catKey, tools]) => {
           if (tools.length === 0) return null;
           return (
             <div key={catKey} className="category-group">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px', marginBottom: '4px' }}>
-                <span className={`category-title ${catKey}`} style={{ margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 4 }}>
+                <span className={`category-title ${catKey}`}>
                   {getCategoryTitle(catKey)}
                 </span>
                 {catKey === 'favorites' && (
                   <button
                     onClick={resetFavorites}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', padding: '2px' }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', padding: '1px', marginLeft: 2 }}
                     title={t('toolbar.resetFavorites')}
                   >
-                    <Icons.RotateCcw size={12} />
+                    <Icons.RotateCcw size={9} />
                   </button>
                 )}
               </div>
@@ -260,18 +282,17 @@ const ToolPalette = ({
                       onDragStart={e => onDragStart(e, tool.id)}
                       onClick={() => window.dispatchEvent(new CustomEvent('vibe-add-node', { detail: { type: tool.id } }))}
                       title={getToolDescription(tool) || `${t('toolbar.addTool')} ${getToolName(tool)}`}
-                      style={{ cursor: 'pointer', position: 'relative' }}
                     >
-                      <IconComponent size={18} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+                      <IconComponent size={13} strokeWidth={1.6} />
                       <span>{getToolName(tool)}</span>
+                      {/* Favorite star */}
                       <div
                         onClick={e => toggleFavorite(tool.id, e)}
-                        style={{ position: 'absolute', top: '-6px', right: '-6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', padding: '3px', background: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', zIndex: 10, cursor: 'pointer' }}
-                        title={favoriteToolIds.includes(tool.id) ? t('toolbar.resetFavorites') : t('toolbar.addTool')}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        style={{ position: 'absolute', top: -5, right: -5, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', padding: '2px', background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', zIndex: 10, cursor: 'pointer', opacity: 0, transition: 'opacity 0.12s' }}
+                        className="tool-star-btn"
+                        title={favoriteToolIds.includes(tool.id) ? 'Remove favorite' : 'Add to favorites'}
                       >
-                        <Star size={10} fill={favoriteToolIds.includes(tool.id) ? '#fbbf24' : 'none'} color={favoriteToolIds.includes(tool.id) ? '#fbbf24' : '#cbd5e1'} strokeWidth={favoriteToolIds.includes(tool.id) ? 1 : 2.5} />
+                        <Star size={8} fill={favoriteToolIds.includes(tool.id) ? '#fbbf24' : 'none'} color={favoriteToolIds.includes(tool.id) ? '#fbbf24' : 'var(--text-muted)'} />
                       </div>
                     </div>
                   );
@@ -282,57 +303,106 @@ const ToolPalette = ({
         })}
       </div>
 
-      {/* ── 액션 버튼 영역 ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
+      {/* ── Right Side Actions ─────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 'auto' }}>
+
+        {/* DSL Step Indicator */}
+        <div className="dsl-step-indicator">
+          {dslSteps.map((step, i) => (
+            <React.Fragment key={step.label}>
+              <span className={`dsl-step ${dslStep === step.step ? 'active' : dslStep > step.step ? 'done' : ''}`}>
+                <span className="dsl-step-dot">●</span>
+                {step.label}
+              </span>
+              {i < dslSteps.length - 1 && <span className="dsl-step-line">──</span>}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="toolbar-divider" />
+
+        {/* View mode toggle */}
+        {setViewMode && (
+          <div className="view-toggle">
+            {[
+              { mode: 'workflow', label: 'Workflow' },
+              { mode: 'split',    label: 'Split' },
+              { mode: 'code',     label: 'Code' },
+            ].map(({ mode, label }) => (
+              <button
+                key={mode}
+                className={`view-toggle-btn ${viewMode === mode ? 'active' : ''}`}
+                onClick={() => setViewMode(mode)}
+                title={`${label} view`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="toolbar-divider" />
 
         {/* Undo / Redo */}
-        <button className="run-button" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', opacity: canUndo ? 1 : 0.5, cursor: canUndo ? 'pointer' : 'not-allowed', padding: '6px 10px' }} onClick={() => canUndo && window.dispatchEvent(new CustomEvent('vibe-undo'))} title={t('toolbar.undo')}>
-          <Icons.Undo size={16} />
+        <button
+          className="toolbar-btn"
+          style={{ opacity: canUndo ? 1 : 0.35 }}
+          onClick={() => canUndo && window.dispatchEvent(new CustomEvent('vibe-undo'))}
+          title={t('toolbar.undo')}
+          disabled={!canUndo}
+        >
+          <Icons.Undo size={15} />
         </button>
-        <button className="run-button" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', opacity: canRedo ? 1 : 0.5, cursor: canRedo ? 'pointer' : 'not-allowed', padding: '6px 10px' }} onClick={() => canRedo && window.dispatchEvent(new CustomEvent('vibe-redo'))} title={t('toolbar.redo')}>
-          <Icons.Redo size={16} />
+        <button
+          className="toolbar-btn"
+          style={{ opacity: canRedo ? 1 : 0.35 }}
+          onClick={() => canRedo && window.dispatchEvent(new CustomEvent('vibe-redo'))}
+          title={t('toolbar.redo')}
+          disabled={!canRedo}
+        >
+          <Icons.Redo size={15} />
         </button>
 
-        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+        <div className="toolbar-divider" />
 
         {/* Load / Save */}
         <input type="file" accept=".json" style={{ display: 'none' }} ref={fileInputRef} onChange={onLoadWorkflow} />
-        <button className="run-button" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} onClick={() => fileInputRef.current?.click()} title={t('toolbar.loadWorkflow')}>
-          <FolderOpen size={16} />
+        <button className="toolbar-btn" onClick={() => fileInputRef.current?.click()} title={t('toolbar.loadWorkflow')}>
+          <FolderOpen size={15} />
         </button>
-        <button className="run-button" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }} onClick={onSaveWorkflow} title={t('toolbar.saveWorkflow')}>
-          <Save size={16} />
+        <button className="toolbar-btn" onClick={onSaveWorkflow} title={t('toolbar.saveWorkflow')}>
+          <Save size={15} />
         </button>
 
         {/* Export .xzz */}
         <button
-          className="run-button"
-          style={{ background: '#f5f0ff', color: '#7c3aed', border: '1px solid #ddd6fe' }}
+          className="toolbar-btn-action"
           onClick={onExportXzz}
           title={t('toolbar.exportXzzTitle')}
+          style={{ gap: 5 }}
         >
-          <FileCode size={16} />
+          <FileCode size={13} />
           <span>{t('toolbar.exportXzz')}</span>
         </button>
 
-        <div style={{ width: '1px', height: '24px', background: 'var(--border-color)' }} />
+        <div className="toolbar-divider" />
 
         {/* Auto-Run */}
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }} title={t('toolbar.autoRunTitle')}>
-          <input type="checkbox" checked={autoRun} onChange={e => setAutoRun(e.target.checked)} style={{ accentColor: 'var(--color-accent)' }} />
-          <span>{t('toolbar.autoRun')}</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none', flexShrink: 0 }} title={t('toolbar.autoRunTitle')}>
+          <input type="checkbox" checked={autoRun} onChange={e => setAutoRun(e.target.checked)} style={{ accentColor: 'var(--color-primary)', width: 13, height: 13 }} />
+          <span>Auto</span>
         </label>
 
-        {/* Run */}
+        {/* Run Button (green) */}
         <button className="run-button" onClick={onRunPipeline} disabled={isRunning} title="Generate x1zzLang code and execute via /execute API">
           {isRunning ? (
             <>
-              <RefreshCw className="animate-spin" size={16} />
+              <RefreshCw className="animate-spin" size={14} />
               <span>{t('toolbar.running')}</span>
             </>
           ) : (
             <>
-              <Play size={16} fill="white" />
+              <Play size={14} fill="currentColor" />
               <span>{t('toolbar.run')}</span>
             </>
           )}
@@ -340,23 +410,22 @@ const ToolPalette = ({
 
         {/* Language Toggle */}
         <button
-          className="run-button"
-          style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', minWidth: 'unset', padding: '6px 10px', gap: '4px' }}
+          className="toolbar-btn"
           onClick={toggleLanguage}
           title={currentLang === 'en' ? '한국어로 전환' : 'Switch to English'}
+          style={{ minWidth: 36 }}
         >
-          <Globe size={14} />
-          <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>{currentLang === 'en' ? 'KO' : 'EN'}</span>
+          <Globe size={13} />
+          <span style={{ fontSize: '0.62rem', fontWeight: 700 }}>{currentLang.toUpperCase()}</span>
         </button>
 
         {/* Fullscreen */}
         <button
-          className="run-button"
-          style={{ background: 'var(--panel-bg)', color: 'var(--text-color)', border: '1px solid var(--border-color)' }}
+          className="toolbar-btn"
           onClick={toggleFullscreen}
           title={isFullscreen ? t('toolbar.exitFullscreen') : t('toolbar.enterFullscreen')}
         >
-          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
         </button>
       </div>
     </div>

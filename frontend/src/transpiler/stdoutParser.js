@@ -18,8 +18,9 @@
  * @typedef {ChartEvent | ErrorEvent | TextEvent} ExecutionEvent
  */
 
-const PREFIX_CHART = '[x1zz:chart]';
-const PREFIX_ERROR = '[x1zz:error]';
+const PREFIX_CHART    = '[x1zz:chart]';
+const PREFIX_ERROR    = '[x1zz:error]';
+const PREFIX_IO_ERROR = '[x1zz IO ERROR]';
 
 /**
  * "ERROR[CODE]: message" 형식 파싱.
@@ -63,17 +64,62 @@ export function parseStdout(lines) {
           const validTypes = ['bar', 'line', 'pie', 'scatter'];
           const chartType = validTypes.includes(payload.chartType) ? payload.chartType : 'bar';
 
+          // payload 컬럼명을 읽어 차트 렌더러가 기대하는 { label, value } / { x, y } 형식으로 변환
+          const rawData  = Array.isArray(payload.data) ? payload.data : [];
+          const xCol     = payload.x;
+          const yCol     = payload.y;
+          const labelCol = payload.label;
+          const valueCol = payload.value;
+
+          let transformedData = rawData;
+          if ((chartType === 'bar' || chartType === 'line') && xCol && yCol) {
+            transformedData = rawData.map(row => ({
+              ...row,
+              label: row[xCol],
+              value: Number(row[yCol] ?? 0),
+              x: row[xCol],
+              y: Number(row[yCol] ?? 0),
+            }));
+          } else if (chartType === 'pie' && labelCol && valueCol) {
+            transformedData = rawData.map(row => ({
+              ...row,
+              label: row[labelCol],
+              value: Number(row[valueCol] ?? 0),
+            }));
+          } else if (chartType === 'scatter' && xCol && yCol) {
+            transformedData = rawData.map(row => ({
+              ...row,
+              x: Number(row[xCol] ?? 0),
+              y: Number(row[yCol] ?? 0),
+            }));
+          }
+
           events.push({
             type:      'chart',
             chartType,
             title:     (typeof payload.title === 'string' ? payload.title : 'Chart'),
-            data:      Array.isArray(payload.data) ? payload.data : [],
+            data:      transformedData,
           });
         } catch {
           // JSON 파싱 실패 → 해당 줄을 텍스트로 처리
           events.push({ type: 'text', text: lines[i] });
         }
       }
+      i++;
+      continue;
+    }
+
+    // ── [x1zz IO ERROR] ──────────────────────────────────────────────────────
+    // load() 런타임 파일 IO 실패 시 출력되는 에러 형식
+    // 예: [x1zz IO ERROR] DATA file not found: C:\...\data\seoul_air_2026.csv
+    if (trimmed.startsWith(PREFIX_IO_ERROR)) {
+      const message = trimmed.slice(PREFIX_IO_ERROR.length).trim();
+      events.push({
+        type:       'error',
+        code:       'IO_ERROR',
+        message,
+        suggestion: 'Check that the file exists under the data/ directory, or verify the @data alias path.',
+      });
       i++;
       continue;
     }

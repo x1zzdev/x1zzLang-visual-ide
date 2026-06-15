@@ -1,50 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* x1zzLang Visual IDE — Global Styles (Dark Mode) */
 
 :root {
-  --font-primary: 'Outfit', 'Outfit Fallback', sans-serif;
-  --font-secondary: 'Inter', 'Inter Fallback', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-secondary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-  /* Theme colors - Clean, Professional Light Mode (Alteryx style) */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-  --bg-panel: #ffffff;
-  
-  --border-color: #e5e7eb;
-  --border-dark: #d1d5db;
-  --border-glow: rgba(59, 130, 246, 0.15);
-  
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
+  /* ── Dark Mode Background ────────────────────────────────── */
+  --bg-primary:   #0a0a0b;
+  --bg-secondary: #18181b;
+  --bg-tertiary:  #27272a;
+  --bg-elevated:  #2d2d31;
+  --bg-panel:     #18181b;
 
-  /* Tool Category Theme Colors (Vivid Alteryx Palette) */
-  --color-inout: #2e7d32;       /* Alteryx Green */
-  --color-inout-glow: rgba(46, 125, 50, 0.08);
-  
-  --color-prep: #0288d1;        /* Alteryx Blue */
-  --color-prep-glow: rgba(2, 136, 209, 0.08);
-  
-  --color-join: #7b1fa2;        /* Alteryx Purple */
-  --color-join-glow: rgba(123, 31, 162, 0.08);
-  
-  --color-transform: #e65100;   /* Alteryx Orange */
-  --color-transform-glow: rgba(230, 81, 0, 0.08);
+  /* ── Borders ─────────────────────────────────────────────── */
+  --border-color: #2a2a2e;
+  --border-hover: #3f3f46;
+  --border-dark:  #3f3f46;
+  --border-glow:  rgba(99, 102, 241, 0.25);
 
-  --color-cloud: #0284c7;       /* Cloud Blue */
-  --color-cloud-glow: rgba(2, 132, 199, 0.08);
+  /* ── Text ────────────────────────────────────────────────── */
+  --text-primary:   #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted:     #52525b;
 
-  --color-accent: #2563eb;      /* Pure Blue Accent */
-  --color-accent-glow: rgba(37, 99, 235, 0.1);
-  --color-success: #16a34a;
-  --color-error: #dc2626;
-  --color-warning: #ea580c;
+  /* ── Category Colors ─────────────────────────────────────── */
+  --color-inout:           #22c55e;
+  --color-inout-glow:      rgba(34, 197, 94, 0.15);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-  --shadow-glow: 0 0 15px rgba(37, 99, 235, 0.08);
+  --color-prep:            #3b82f6;
+  --color-prep-glow:       rgba(59, 130, 246, 0.15);
+
+  --color-join:            #a855f7;
+  --color-join-glow:       rgba(168, 85, 247, 0.15);
+
+  --color-transform:       #f97316;
+  --color-transform-glow:  rgba(249, 115, 22, 0.15);
+
+  --color-cloud:           #06b6d4;
+  --color-cloud-glow:      rgba(6, 182, 212, 0.15);
+
+  /* ── Action Colors ───────────────────────────────────────── */
+  --color-primary:         #6366f1;   /* indigo — general actions */
+  --color-primary-glow:    rgba(99, 102, 241, 0.2);
+  --color-accent:          #6366f1;
+  --color-accent-glow:     rgba(99, 102, 241, 0.2);
+  --color-run:             #22c55e;   /* green — run button */
+  --color-success:         #22c55e;
+  --color-error:           #ef4444;
+  --color-danger:          #ef4444;
+  --color-warning:         #f59e0b;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 16px rgba(99, 102, 241, 0.15);
 }
 
 * {
@@ -55,65 +65,77 @@
 
 body {
   margin: 0;
-  font-family: var(--font-secondary);
-  background-color: var(--bg-secondary);
+  font-family: var(--font-primary);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbars */
+/* ── Custom Scrollbars ─────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #3f3f46;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #52525b;
 }
 
-/* Utility styles for panels */
+/* ── Glass Panel ───────────────────────────────────────────── */
 .glass-panel {
-  background: var(--bg-panel);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
-/* Button aesthetics */
+/* ── Button Base ───────────────────────────────────────────── */
 button {
   font-family: var(--font-primary);
   cursor: pointer;
   border: none;
   outline: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Inputs ────────────────────────────────────────────────── */
 input, select, textarea {
-  font-family: var(--font-secondary);
+  font-family: var(--font-primary);
   outline: none;
-  border: 1px solid var(--border-dark);
-  background: #ffffff;
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px var(--color-accent-glow);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-glow);
+  background: var(--bg-elevated);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
 }
 
 input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+select option {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }

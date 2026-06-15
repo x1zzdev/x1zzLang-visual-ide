@@ -68,12 +68,12 @@ const initialEdges = [
 // ── 탭 초기 상태 로드 ─────────────────────────────────────────────────────────
 const getInitialTabs = () => {
   try {
-    const savedTabs = localStorage.getItem('vibeetl_autosave_workflow_tabs');
+    const savedTabs = localStorage.getItem('x1zzlang_autosave_workflow_tabs');
     if (savedTabs) {
       const parsed = JSON.parse(savedTabs);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-    const savedSingle = localStorage.getItem('vibeetl_autosave_workflow');
+    const savedSingle = localStorage.getItem('x1zzlang_autosave_workflow');
     if (savedSingle) {
       const parsed = JSON.parse(savedSingle);
       return [{
@@ -144,6 +144,81 @@ const BUILTIN_TOOLS = [
 ];
 
 
+// ── X1zzCodePanel: inline code viewer for split/code modes ───────────────────
+function X1zzCodePanel({ x1zzCode, onCopy, width = '40%' }) {
+  const [copied, setCopied] = React.useState(false);
+  const handleCopy = () => {
+    if (onCopy) onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="split-code-panel" style={{ width }}>
+      <div className="split-code-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Generated x1zzLang
+          </span>
+          <span style={{ fontSize: '0.6rem', color: '#6b7280', background: '#383650', padding: '1px 6px', borderRadius: 3 }}>.xzz</span>
+        </div>
+        <button
+          onClick={handleCopy}
+          style={{ background: 'transparent', border: '1px solid #383650', color: copied ? '#86efac' : '#a5b4fc', padding: '3px 10px', borderRadius: 4, fontSize: '0.65rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+        >
+          {copied ? '✓ Copied' : '⎘ Copy'}
+        </button>
+      </div>
+      <div className="split-code-content">
+        {x1zzCode ? (
+          <pre style={{ margin: 0, fontFamily: "'JetBrains Mono','Fira Code','Consolas',monospace", fontSize: '0.78rem', lineHeight: 1.75, color: '#e2e8f0', whiteSpace: 'pre', tabSize: 2 }}>
+            {x1zzCode.split('\n').map((line, idx) => {
+              let styledLine;
+              if (line.trim().startsWith('//')) {
+                styledLine = <span key={idx} style={{ color: '#6b7280' }}>{line}</span>;
+              } else if (line.trim().startsWith('type ')) {
+                styledLine = <span key={idx} style={{ color: '#c084fc' }}>{line}</span>;
+              } else if (/^\s*v\s+/.test(line)) {
+                const m = line.match(/^(v\s+)(\w+)(\s*=\s*)(.*)$/);
+                styledLine = m ? (
+                  <span key={idx}>
+                    <span style={{ color: '#a78bfa' }}>v </span>
+                    <span style={{ color: '#7dd3fc' }}>{m[2]}</span>
+                    <span style={{ color: '#94a3b8' }}>{m[3]}</span>
+                    <span style={{ color: '#e2e8f0' }}>{m[4]}</span>
+                  </span>
+                ) : <span key={idx} style={{ color: '#e2e8f0' }}>{line}</span>;
+              } else if (line.trim().startsWith('|>')) {
+                const m = line.match(/^(\s*\|>\s*)(\w+)(.*)$/);
+                styledLine = m ? (
+                  <span key={idx}>
+                    <span style={{ color: '#f97316' }}>{m[1]}</span>
+                    <span style={{ color: '#34d399' }}>{m[2]}</span>
+                    <span style={{ color: '#e2e8f0' }}>{m[3]}</span>
+                  </span>
+                ) : <span key={idx} style={{ color: '#f97316' }}>{line}</span>;
+              } else {
+                styledLine = <span key={idx} style={{ color: '#e2e8f0' }}>{line}</span>;
+              }
+              return (
+                <div key={idx} style={{ display: 'flex', minHeight: '1.4em' }}>
+                  <span style={{ width: '2.5rem', color: '#4b5563', textAlign: 'right', marginRight: '1rem', flexShrink: 0, userSelect: 'none', fontSize: '0.68rem', lineHeight: 1.75 }}>
+                    {idx + 1}
+                  </span>
+                  {styledLine}
+                </div>
+              );
+            })}
+          </pre>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#52525b', paddingTop: 60 }}>
+            <span style={{ fontSize: '0.8rem' }}>Add nodes to generate x1zzLang code</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const { t } = useTranslation();
@@ -164,7 +239,8 @@ function App() {
   const [selectedHandle, setSelectedHandle] = useState(null);
   const [x1zzCode, setX1zzCode]         = useState('');
   const [autoRun, setAutoRun]           = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [viewMode, setViewMode]         = useState('workflow'); // 'workflow' | 'split' | 'code'
+  const [sidebarWidth, setSidebarWidth] = useState(290);
   const [resultsHeight, setResultsHeight] = useState(280);
 
   // ── 탭-캔버스 동기화 ────────────────────────────────────────────────────────
@@ -478,10 +554,10 @@ function App() {
         const all = [...sel, ...children];
         const ids = all.map(n => n.id);
         const selEdges = edges.filter(e2 => ids.includes(e2.source) && ids.includes(e2.target));
-        if (all.length > 0) localStorage.setItem('vibeetl_clipboard', JSON.stringify({ nodes: all, edges: selEdges }));
+        if (all.length > 0) localStorage.setItem('x1zzlang_clipboard', JSON.stringify({ nodes: all, edges: selEdges }));
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         e.preventDefault();
-        const cb = localStorage.getItem('vibeetl_clipboard');
+        const cb = localStorage.getItem('x1zzlang_clipboard');
         if (!cb) return;
         try {
           const parsed = JSON.parse(cb);
@@ -510,9 +586,9 @@ function App() {
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     if (isDraggingNode.current) return;
     setIsDirty(true);
-    localStorage.setItem('vibeetl_autosave_workflow', JSON.stringify({ nodes, edges }));
+    localStorage.setItem('x1zzlang_autosave_workflow', JSON.stringify({ nodes, edges }));
     const synced = tabs.map(t => t.id === activeTabId ? { ...t, nodes, edges, isDirty: true } : t);
-    localStorage.setItem('vibeetl_autosave_workflow_tabs', JSON.stringify(synced));
+    localStorage.setItem('x1zzlang_autosave_workflow_tabs', JSON.stringify(synced));
   }, [nodes, edges, tabs, activeTabId]);
 
   React.useEffect(() => {
@@ -591,8 +667,10 @@ function App() {
 
       if (data.success) {
         setExecuteResult({ rows: data.rows || [], schema: data.schema || {}, logs: data.logs || [] });
-        // stdout 파싱: data.stdout(raw lines) 우선, 없으면 data.logs 로 폴백
-        const rawStdout = Array.isArray(data.stdout) ? data.stdout : (data.logs || []);
+        // stdout 파싱: string이면 '\n'으로 split → array 보장
+        const rawStdout = Array.isArray(data.stdout)
+          ? data.stdout
+          : (typeof data.stdout === 'string' ? data.stdout.split('\n') : (data.logs || []));
         setExecutionEvents(parseStdout(rawStdout));
         setGlobalLogs([
           '✅ Execution complete.',
@@ -822,6 +900,10 @@ function App() {
         autoRun={autoRun}
         setAutoRun={setAutoRun}
         availableTools={BUILTIN_TOOLS}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        x1zzCode={x1zzCode}
+        hasResult={executeResult !== null}
       />
 
       <div className="workspace-container">
@@ -854,42 +936,77 @@ function App() {
             <button className="tab-add-btn" onClick={handleAddTab}>+</button>
           </div>
 
-          {/* 캔버스 */}
-          <div style={{ flex: 1, position: 'relative' }}>
-            <ErrorBoundary>
-              <Canvas
-                key={activeTabId}
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onNodeSelect={(node) => { setSelectedNodeId(node?.id || null); setSelectedHandle(null); }}
-                onEdgeSelect={setSelectedEdgeId}
-                onAddNode={handleAddNode}
-                onNodesDelete={onNodesDelete}
-                onNodeDragStop={() => {
-                  isDraggingNode.current = false;
-                  setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, nodes, edges, isDirty: true } : t));
-                }}
-              />
-            </ErrorBoundary>
-          </div>
+          {/* ── Workflow view: canvas + bottom results ── */}
+          {viewMode === 'workflow' && (
+            <>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <ErrorBoundary>
+                  <Canvas
+                    key={activeTabId}
+                    nodes={nodes}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeSelect={(node) => { setSelectedNodeId(node?.id || null); setSelectedHandle(null); }}
+                    onEdgeSelect={setSelectedEdgeId}
+                    onAddNode={handleAddNode}
+                    onNodesDelete={onNodesDelete}
+                    onNodeDragStop={() => {
+                      isDraggingNode.current = false;
+                      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, nodes, edges, isDirty: true } : t));
+                    }}
+                  />
+                </ErrorBoundary>
+              </div>
+              <div className="results-resizer" onMouseDown={startResizingResults} />
+              <ErrorBoundary>
+                <ResultsWindow
+                  selectedNode={inspectedNode}
+                  originalNode={nodes.find(n => n.id === selectedNodeId)}
+                  executeResult={executeResult}
+                  executionEvents={executionEvents}
+                  globalLogs={globalLogs}
+                  x1zzCode={x1zzCode}
+                  style={{ height: `${resultsHeight}px` }}
+                />
+              </ErrorBoundary>
+            </>
+          )}
 
-          {/* 결과 패널 */}
-          <div className="results-resizer" onMouseDown={startResizingResults} />
-          <ErrorBoundary>
-            <ResultsWindow
-              selectedNode={inspectedNode}
-              originalNode={nodes.find(n => n.id === selectedNodeId)}
-              executeResult={executeResult}
-              executionEvents={executionEvents}
-              globalLogs={globalLogs}
-              x1zzCode={x1zzCode}
-              style={{ height: `${resultsHeight}px` }}
-            />
-          </ErrorBoundary>
+          {/* ── Split view: canvas left + x1zz code right ── */}
+          {viewMode === 'split' && (
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                <ErrorBoundary>
+                  <Canvas
+                    key={activeTabId + '-split'}
+                    nodes={nodes}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeSelect={(node) => { setSelectedNodeId(node?.id || null); setSelectedHandle(null); }}
+                    onEdgeSelect={setSelectedEdgeId}
+                    onAddNode={handleAddNode}
+                    onNodesDelete={onNodesDelete}
+                    onNodeDragStop={() => {
+                      isDraggingNode.current = false;
+                      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, nodes, edges, isDirty: true } : t));
+                    }}
+                  />
+                </ErrorBoundary>
+              </div>
+              <X1zzCodePanel x1zzCode={x1zzCode} onCopy={() => navigator.clipboard.writeText(x1zzCode)} width="40%" />
+            </div>
+          )}
+
+          {/* ── Code view: x1zz code full screen ── */}
+          {viewMode === 'code' && (
+            <X1zzCodePanel x1zzCode={x1zzCode} onCopy={() => navigator.clipboard.writeText(x1zzCode)} width="100%" />
+          )}
         </div>
       </div>
     </div>

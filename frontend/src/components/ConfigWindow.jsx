@@ -207,29 +207,44 @@ const ConfigWindow = ({
     return labels[type] || (availableTools.find(t2 => t2.id === type)?.name) || type || 'Node';
   };
 
-  // ── 로컬 파일 선택 핸들러 ─────────────────────────────────────────────────
-  const handleLocalFileSelect = (e) => {
+  // ── 로컬 파일 선택 핸들러 (API 기반 스키마 추론) ─────────────────────────
+  const handleLocalFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // 1. x1zz-server POST /schema API 호출 (Polars 기반 타입 추론)
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8005';
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${API_BASE}/schema`, { method: 'POST', body: formData });
+      if (res.ok) {
+        const { schema: rawSchema, filePath } = await res.json();
+        // API는 { name, type } 배열을 반환 (type: 'int'|'float'|'bool'|'string')
+        // IDE 내부는 'Int'|'Float'|'Bool'|'String' 대문자 첫글자 사용
+        const detectedSchema = rawSchema.map(col => ({
+          name: col.name,
+          type: col.type.charAt(0).toUpperCase() + col.type.slice(1),
+        }));
+        update({ filePath: filePath || file.name, detectedSchema });
+        e.target.value = '';
+        return;
+      }
+    } catch (_) {
+      // 서버 미실행 시 JS 폴백으로 계속 진행
+    }
+
+    // 2. 폴백: JS 기반 스키마 추론
     const reader = new FileReader();
     reader.onload = (ev) => {
       const arrayBuffer = ev.target.result;
-
-      // 인코딩 자동 감지: UTF-8 (strict) → EUC-KR → UTF-8 (fallback)
       let text = '';
       try {
-        const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
-        text = utf8Decoder.decode(arrayBuffer);
+        text = new TextDecoder('utf-8', { fatal: true }).decode(arrayBuffer);
       } catch {
-        try {
-          const euckrDecoder = new TextDecoder('euc-kr');
-          text = euckrDecoder.decode(arrayBuffer);
-        } catch {
-          const fallbackDecoder = new TextDecoder('utf-8');
-          text = fallbackDecoder.decode(arrayBuffer);
-        }
+        try { text = new TextDecoder('euc-kr').decode(arrayBuffer); }
+        catch { text = new TextDecoder('utf-8').decode(arrayBuffer); }
       }
-
       const detectedSchema = parseCSVSchema(text);
       update({ filePath: file.name, detectedSchema });
     };
@@ -268,9 +283,9 @@ const ConfigWindow = ({
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 12px', borderRadius: 6,
-                border: '1px solid var(--color-accent, #6366f1)',
-                background: 'var(--color-accent-light, #eef2ff)',
-                color: 'var(--color-accent, #6366f1)',
+                border: '1px solid rgba(99, 102, 241, 0.5)',
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: '#a5b4fc',
                 fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}

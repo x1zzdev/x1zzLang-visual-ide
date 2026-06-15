@@ -114,6 +114,9 @@ export function transpileToX1zz(nodes, edges) {
     let currentPipelineVar = null;
     const pipelineLines = [];
 
+    // 체인 내 공유 columnMapping (source 노드에서 downstream으로 전파)
+    let chainColumnMapping = {};
+
     chainNodes.forEach(node => {
       if (processedNodeIds.has(node.id)) return;
       processedNodeIds.add(node.id);
@@ -125,6 +128,16 @@ export function transpileToX1zz(nodes, edges) {
       const upstreamEdges = validEdges.filter(e => e.target === node.id);
       const upstreamVarNames = upstreamEdges.map(e => nodeVarMap.get(e.source)).filter(Boolean);
 
+      // source 노드에서 생성된 columnMapping을 downstream 노드에 전파
+      if (node.type !== 'fileInput' && Object.keys(chainColumnMapping).length > 0) {
+        if (!node.data) node.data = {};
+        if (!node.data.parameters) node.data.parameters = {};
+        // 이미 자체 mapping이 없을 때만 체인 mapping 적용
+        if (!node.data.parameters.columnMapping) {
+          node.data.parameters.columnMapping = chainColumnMapping;
+        }
+      }
+
       const result = mapper
         ? mapper(node, varName, upstreamVarNames)
         : getFallbackMapping(node);
@@ -134,6 +147,10 @@ export function transpileToX1zz(nodes, edges) {
         result.lines.forEach(l => lines.push(l));
         lines.push('');
         currentPipelineVar = varName;
+        // source 노드의 columnMapping을 체인 전체에 전파
+        if (result.columnMapping) {
+          chainColumnMapping = result.columnMapping;
+        }
       } else if (result.type === 'pipeline') {
         // 파이프라인 스텝 → 들여쓰기하여 누적
         result.lines.forEach(l => pipelineLines.push('  ' + l));

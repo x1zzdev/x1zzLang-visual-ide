@@ -42,41 +42,41 @@ const FindNodePanel = ({ nodes, onNodeSelect }) => {
   return (
     <Panel position="top-right" className="find-node-panel">
       {!isOpen ? (
-        <button className="mode-btn" onClick={() => setIsOpen(true)} title="Find Tool on Canvas" style={{ background: 'white', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <button className="mode-btn" onClick={() => setIsOpen(true)} title="Find Tool on Canvas" style={{ background: 'var(--bg-elevated)', padding: '8px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.4)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
           <Search size={16} />
           <span style={{ fontSize: '12px', fontWeight: 600 }}>Find...</span>
         </button>
       ) : (
-        <div style={{ background: 'white', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', width: '250px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid #e2e8f0' }}>
-            <Search size={14} style={{ color: '#94a3b8', marginRight: '8px' }} />
+        <div style={{ background: 'var(--bg-elevated)', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', border: '1px solid var(--border-color)', width: '250px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
+            <Search size={14} style={{ color: 'var(--text-muted)', marginRight: '8px', flexShrink: 0 }} />
             <input 
               autoFocus
               type="text" 
               placeholder="Find by ID or Name..." 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{ border: 'none', outline: 'none', width: '100%', fontSize: '12px' }}
+              style={{ border: 'none', outline: 'none', width: '100%', fontSize: '12px', background: 'transparent', color: 'var(--text-primary)' }}
             />
-            <button onClick={() => { setIsOpen(false); setQuery(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#94a3b8' }}>
+            <button onClick={() => { setIsOpen(false); setQuery(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
               <X size={14} />
             </button>
           </div>
           {query.trim() && (
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
               {matchingNodes.length === 0 ? (
-                <div style={{ padding: '12px', fontSize: '12px', color: '#94a3b8', textAlign: 'center' }}>No tools found</div>
+                <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>No tools found</div>
               ) : (
                 matchingNodes.map(node => (
                   <div 
                     key={node.id}
                     onClick={() => handleSelect(node)}
-                    style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', borderBottom: '1px solid #f1f5f9', ':hover': { backgroundColor: '#f8fafc' } }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--border-color)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>{node.data?.label || 'Node'}</span>
-                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>ID: {node.id}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>{node.data?.label || 'Node'}</span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>ID: {node.id}</span>
                   </div>
                 ))
               )}
@@ -282,7 +282,7 @@ const CanvasContent = ({
               }));
             }}
             title="Group selected nodes into a Container"
-            style={{ color: '#2563eb', fontWeight: 600, background: 'rgba(37, 99, 235, 0.1)' }}
+            style={{ color: '#a5b4fc', fontWeight: 600, background: 'rgba(99, 102, 241, 0.15)' }}
           >
             <Box size={14} />
             <span>Put in Container</span>
@@ -320,7 +320,7 @@ const CanvasContent = ({
         defaultViewport={{ x: 50, y: 50, zoom: 1.1 }}
       >
         <Controls showInteractive={false} style={{ bottom: 15, left: 15 }} />
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="rgba(0, 0, 0, 0.08)" />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="rgba(255, 255, 255, 0.055)" />
         <FindNodePanel nodes={nodes} onNodeSelect={onNodeSelect} />
       </ReactFlow>
     </div>
